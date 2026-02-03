@@ -1,0 +1,120 @@
+<!-- UI_Action.html -->
+<script>
+    // 簡單的狀態管理
+    const State = {
+        studentId: null,
+        currentTask: null // { label, question, ... }
+    };
+
+    const DOM = {
+        loginCard: document.getElementById('loginCard'),
+        contentArea: document.getElementById('contentArea'),
+        studentIdInput: document.getElementById('studentId'),
+        btnLogin: document.getElementById('btnLogin'),
+        btnSubmit: document.getElementById('btnSubmit'),
+        questionTitle: document.getElementById('questionTitle'),
+        questionDesc: document.getElementById('questionDesc'),
+        statusMessage: document.getElementById('statusMessage'),
+        feedbackCard: document.getElementById('feedbackCard'),
+        feedbackContent: document.getElementById('feedbackContent'),
+        progressBar: document.getElementById('progressBar')
+    };
+
+    // --- 初始化事件 ---
+
+    DOM.btnLogin.addEventListener('click', handleLogin);
+    DOM.btnSubmit.addEventListener('click', handleSubmit);
+
+    // --- 處理函式 ---
+
+    function handleLogin() {
+        const sid = DOM.studentIdInput.value.trim();
+        if (!sid) {
+            showMessage("請輸入學號", "error");
+            return;
+        }
+
+        setLoading(true);
+
+        // 模擬登入驗證與取得任務 (呼叫後端 Service_Engine 尚未實作的介面)
+        // 這裡先模擬成功，切換 UI
+        setTimeout(() => {
+            State.studentId = sid;
+            showMessage("登入成功！", "success");
+
+            // 切換畫面
+            DOM.loginCard.style.display = 'none';
+            DOM.contentArea.style.display = 'block';
+
+            // 載入假題目
+            loadMockQuestion();
+
+            setLoading(false);
+        }, 800);
+    }
+
+    function handleSubmit() {
+        const answer = document.getElementById('answerInput').value.trim();
+        if (!answer) {
+            showMessage("請輸入答案", "error");
+            return;
+        }
+
+        setLoading(true);
+
+        // 呼叫 google.script.run
+        // google.script.run
+        //   .withSuccessHandler(onSubmitSuccess)
+        //   .withFailureHandler(onSubmitFailure)
+        //   .submitAnswer(State.studentId, answer);
+
+        // 模擬提交
+        setTimeout(() => {
+            showMessage("提交成功！AI 正在分析...", "success");
+
+            // 顯示回饋
+            DOM.feedbackCard.style.display = 'block';
+            DOM.feedbackContent.innerHTML = "<strong>很好的回答！</strong><br>您掌握了核心概念。建議可以再補充關於實務應用的例子。";
+            DOM.btnSubmit.disabled = true;
+            DOM.btnSubmit.innerText = "已完成";
+
+            // 更新進度條
+            DOM.progressBar.style.width = "33%";
+
+            setLoading(false);
+        }, 1500);
+    }
+
+    function loadMockQuestion() {
+        DOM.questionTitle.innerText = "階段一：基礎概論";
+        DOM.questionDesc.innerText = "請問「簡報同步互動」對於學習成效最大的幫助是什麼？（請簡答）";
+    }
+
+    // --- 工具函式 ---
+
+    function showMessage(msg, type) {
+        DOM.statusMessage.innerText = msg;
+        DOM.statusMessage.className = 'message ' + type;
+        DOM.statusMessage.style.display = 'block';
+
+        if (type === 'success') {
+            setTimeout(() => {
+                DOM.statusMessage.style.display = 'none';
+            }, 3000);
+        }
+    }
+
+    function setLoading(loading) {
+        const btns = document.querySelectorAll('.btn');
+        btns.forEach(b => {
+            if (loading) {
+                b.dataset.originalText = b.innerText;
+                b.innerText = "處理中...";
+                b.disabled = true;
+            } else {
+                b.innerText = b.dataset.originalText || b.innerText;
+                b.disabled = false;
+            }
+        });
+    }
+</script>
