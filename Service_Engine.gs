@@ -120,10 +120,26 @@ const Service_Engine = (function() {
         completeInfo.totalAccumulatedScore // 總分
       );
       
+      // 4. (Optimization) 呼叫 AI 分析回饋
+      let aiFeedback = null;
+      try {
+        // 僅针对簡答題或特定情境觸發 AI
+        // 這裡做簡單示範：所有題目都嘗試取得回饋
+        const qConfig = stageQs.find(q => q.question in answers);
+        if (qConfig) {
+             const ansText = answers[qConfig.question];
+             const aiRes = Service_AI.analyzeResponse(qConfig.question, ansText);
+             aiFeedback = aiRes.feedback;
+        }
+      } catch(e) {
+        console.log("AI Feedback Error: " + e.toString());
+      }
+      
       return {
         status: 'success',
         message: '已儲存作答',
-        progress: completeInfo.completedCount
+        progress: completeInfo.completedCount,
+        feedback: aiFeedback // 回傳 AI 回饋
       };
     },
     
@@ -173,6 +189,30 @@ const Service_Engine = (function() {
       });
       
       return { stageMarks, completedCount, totalAccumulatedScore };
+    },
+
+    /**
+     * 取得學員下一題 (NEW)
+     */
+    getStudentNextTask: function(runId, studentId) {
+       const allQs = Service_DB.getActivityConfig(runId);
+       // 讀取學員資料：Map<HeaderName, Value>
+       const studentData = Service_DB.getStudentRowData(runId, studentId);
+
+       // 依序尋找未作答題目
+       // 假設 allQs 已經是正確順序 (readConfig 讀取順序)
+       for (const q of allQs) {
+           // 判定是否已作答：檢查 Timestamp 或 Target Column 是否有值
+           const tsVal = studentData[q.timestampColumn];
+           const ansVal = studentData[q.targetColumn];
+           const isDone = (tsVal && String(tsVal).trim() !== "") || (ansVal && String(ansVal).trim() !== "");
+           
+           if (!isDone) {
+               return { status: 'pending', question: q };
+           }
+       }
+       
+       return { status: 'completed' };
     },
 
     _buildStageInfo: function(allQs) {

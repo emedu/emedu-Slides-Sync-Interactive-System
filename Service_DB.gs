@@ -13,7 +13,7 @@ const Service_DB = (function() {
 
   // --- 設定常數 (保留 v9.4.2 設定) ---
   const CONFIG = {
-    MASTER_SPREADSHEET_NAME: "伊美全自動互動學習追蹤系統 - 主控台 v10.0",
+    MASTER_SPREADSHEET_NAME: "伊美：簡報同步互動學習系統 - 主控台 v10.0",
     MASTER_SETTINGS_SHEET: "系統設定",
     ACT_SETTINGS_SNAPSHOT: "系統設定(快照)",
     DATA_SHEET_NAME: "學員資料總表",
@@ -68,6 +68,18 @@ const Service_DB = (function() {
       const list = ss.insertSheet(CONFIG.ACTIVITIES_OVERVIEW_SHEET);
       list.getRange(1,1,1,6).setValues([["活動ID","活動名稱","狀態","活動資料簿連結","表單數","建立時間"]]).setFontWeight("bold");
       list.setFrozenRows(1);
+
+      // 3. 學員資料總表 (Student Data Sheet)
+      let dataSheet;
+      try {
+        dataSheet = ss.insertSheet(CONFIG.DATA_SHEET_NAME);
+      } catch (e) {
+        dataSheet = ss.getSheetByName(CONFIG.DATA_SHEET_NAME);
+      }
+      const dataHeaders = ["學號", "姓名", "Email", "備註"]; // Basic headers
+      dataSheet.getRange(1, 1, 1, dataHeaders.length).setValues([dataHeaders]).setFontWeight("bold");
+      dataSheet.setFrozenRows(1);
+
 
       // 清除預設工作表
       try { ss.deleteSheet(ss.getSheetByName('工作表1')); } catch(e){}
@@ -138,6 +150,36 @@ const Service_DB = (function() {
       
       sheet.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight("bold");
       sheet.setFrozenRows(1);
+    },
+
+    /**
+     * 新增題目設定 (Admin CMS)
+     */
+    addQuestionConfig: function(ssId, questionData) {
+       const ss = SpreadsheetApp.openById(ssId);
+       let sheet = ss.getSheetByName(CONFIG.MASTER_SETTINGS_SHEET);
+       if (!sheet) return { status: 'error', message: '找不到設定表' };
+       
+       // Headers參考: Label, Form Title, Question, Ans Col, Type, Options, Std Ans, Score, Help, ...
+       // 取得最後一列
+       const lastRow = sheet.getLastRow();
+       
+       const newRow = [
+         questionData.label || "未分類", // 階段 default
+         `學習系統：${questionData.label || "未命名"}`, // 預設標題
+         questionData.question || "未命名題目",       // 問題
+         questionData.key || `Q${Date.now()}`, // 答案欄位 (自動產生)
+         questionData.type || "單選題",           // 類型
+         questionData.options || "",  // 選項
+         questionData.answer || "",   // 標準答案
+         Number(questionData.score) || 0,     // 分數 (Ensure number)
+         questionData.desc || "",     // 提示
+         "", // 截止日
+         ""  // 必修數
+       ];
+       
+       sheet.appendRow(newRow);
+       return { status: 'success' };
     },
 
     /**

@@ -39,6 +39,15 @@ const Service_Security = (function() {
     validateStudentId: function(sid) {
       if (!sid || sid.trim().length === 0) return false;
       return true;
+    },
+
+    /**
+     * 驗證管理員密碼
+     */
+    verifyAdmin: function(password) {
+      // 預設密碼 admin123，實際運作建議修改
+      const stored = PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD') || 'admin123';
+      return String(password) === stored;
     }
   };
 })();

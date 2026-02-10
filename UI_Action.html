@@ -36,21 +36,47 @@
 
         setLoading(true);
 
-        // 模擬登入驗證與取得任務 (呼叫後端 Service_Engine 尚未實作的介面)
-        // 這裡先模擬成功，切換 UI
-        setTimeout(() => {
-            State.studentId = sid;
-            showMessage("登入成功！", "success");
+        // 呼叫後端 API
+        google.script.run
+            .withSuccessHandler((response) => {
+                setLoading(false);
+                if (response.status === 'success') {
+                    State.studentId = sid;
 
-            // 切換畫面
-            DOM.loginCard.style.display = 'none';
-            DOM.contentArea.style.display = 'block';
+                    // Handle Course Completion
+                    if (response.completed) {
+                        DOM.loginCard.style.display = 'none';
+                        DOM.contentArea.style.display = 'block';
+                        DOM.contentArea.innerHTML = `
+                            <div class="card" style="text-align:center; padding:40px;">
+                                <div class="card-title" style="color:var(--primary-color);">🎉 恭喜完成！</div>
+                                <p style="font-size:1.2rem; color:#444;">${response.message}</p>
+                                <div style="margin-top:20px; font-size:3rem;">🏆</div>
+                            </div>
+                        `;
+                        return;
+                    }
 
-            // 載入假題目
-            loadMockQuestion();
+                    State.currentTask = response.task; // 儲存題目資訊
+                    console.log("Task loaded:", response.task);
 
-            setLoading(false);
-        }, 800);
+                    showMessage("登入成功！", "success");
+
+                    // 切換畫面
+                    DOM.loginCard.style.display = 'none';
+                    DOM.contentArea.style.display = 'block';
+
+                    // 載入題目
+                    renderQuestion(response.task);
+                } else {
+                    showMessage("登入失敗：" + response.message, "error");
+                }
+            })
+            .withFailureHandler((err) => {
+                setLoading(false);
+                showMessage("系統錯誤：" + err.message, "error");
+            })
+            .apiLogin(sid);
     }
 
     function handleSubmit() {
@@ -60,35 +86,55 @@
             return;
         }
 
+        if (!State.studentId || !State.currentTask) {
+            showMessage("狀態錯誤，請重新登入", "error");
+            return;
+        }
+
         setLoading(true);
 
-        // 呼叫 google.script.run
-        // google.script.run
-        //   .withSuccessHandler(onSubmitSuccess)
-        //   .withFailureHandler(onSubmitFailure)
-        //   .submitAnswer(State.studentId, answer);
+        // 呼叫後端 API
+        google.script.run
+            .withSuccessHandler((response) => {
+                setLoading(false);
+                if (response.status === 'success') {
+                    showMessage("提交成功！", "success");
 
-        // 模擬提交
-        setTimeout(() => {
-            showMessage("提交成功！AI 正在分析...", "success");
+                    // 顯示回饋 (若後端有回傳 score 更好，目前先 stub)
+                    DOM.feedbackCard.style.display = 'block';
+                    DOM.feedbackContent.innerHTML = `<strong>需待人工或 AI 評分</strong><br>已儲存您的作答。`;
 
-            // 顯示回饋
-            DOM.feedbackCard.style.display = 'block';
-            DOM.feedbackContent.innerHTML = "<strong>很好的回答！</strong><br>您掌握了核心概念。建議可以再補充關於實務應用的例子。";
-            DOM.btnSubmit.disabled = true;
-            DOM.btnSubmit.innerText = "已完成";
+                    DOM.btnSubmit.disabled = true;
+                    DOM.btnSubmit.innerText = "已完成";
 
-            // 更新進度條
-            DOM.progressBar.style.width = "33%";
+                    // 更新進度條 (後端回傳 completedCount)
+                    // 簡單模擬：每題 10%
+                    const p = (response.progress || 0) * 10;
+                    DOM.progressBar.style.width = p + "%";
 
-            setLoading(false);
-        }, 1500);
+                } else {
+                    showMessage("提交失敗：" + response.message, "error");
+                }
+            })
+            .withFailureHandler((err) => {
+                setLoading(false);
+                showMessage("連線錯誤：" + err.message, "error");
+            })
+            .apiSubmit(State.studentId, State.currentTask.stage, State.currentTask.question, answer);
     }
 
-    function loadMockQuestion() {
-        DOM.questionTitle.innerText = "階段一：基礎概論";
-        DOM.questionDesc.innerText = "請問「簡報同步互動」對於學習成效最大的幫助是什麼？（請簡答）";
+    function renderQuestion(task) {
+        DOM.questionTitle.innerText = task.stage;
+        let html = `<strong>${task.question}</strong>`;
+        if (task.desc) html += `<br><span style="font-size:0.8rem; color:#666">${task.desc}</span>`;
+        DOM.questionDesc.innerHTML = html;
+
+        // 清空輸入
+        document.getElementById('answerInput').value = "";
+
     }
+
+
 
     // --- 工具函式 ---
 

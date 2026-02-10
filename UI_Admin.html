@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <title>後台管理系統 - 伊美：簡報同步互動學習系統</title>
+    <?!= HtmlService.createHtmlOutputFromFile('UI_Style').getContent(); ?>
+    <style>
+        /* Admin Specific Styles */
+        .admin-container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 15px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .action-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        /* Login Form Override */
+        #adminLoginCard {
+            max-width: 400px;
+            margin: 100px auto;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <div class="header" style="background: linear-gradient(135deg, #1a2a6c, #b21f1f); padding: 20px;">
+        <h1>後台管理系統</h1>
+        <div style="font-size: 0.8rem; opacity: 0.8;">伊美：簡報同步互動學習系統 v10.0</div>
+    </div>
+
+    <div class="admin-container">
+
+        <!-- 1. 登入區 -->
+        <div id="adminLoginCard" class="card">
+            <div class="card-title">管理員登入</div>
+            <div class="form-group">
+                <label>管理密碼</label>
+                <input type="password" id="adminPassword" placeholder="預設: admin123" />
+            </div>
+            <button id="btnLogin" class="btn">登入後台</button>
+            <div id="loginMsg" class="message" style="display:none; margin-top:10px;"></div>
+        </div>
+
+        <!-- 2. 儀表板 (登入後顯示) -->
+        <div id="dashboard" style="display: none;">
+
+            <!-- 統計數據 -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="statTotalUsers">-</div>
+                    <div class="stat-label">總學員數</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statTodaySubmits">-</div>
+                    <div class="stat-label">今日提交</div>
+                </div>
+            </div>
+
+            <!-- 快速連結 -->
+            <div class="card">
+                <div class="card-title">快速管理入口</div>
+                <div class="action-grid">
+                    <a id="linkMaster" href="#" target="_blank" class="btn" style="background:#217346;">📊 開啟主控台</a>
+                    <a id="linkData" href="#" target="_blank" class="btn" style="background:#107c41;">📄 開啟資料表</a>
+                </div>
+            </div>
+
+            <!-- 3. 學員資料管理 -->
+            <div class="card">
+                <div class="card-title">學員資料管理</div>
+                <p class="text-muted mb-2">請直接在試算表中管理學員名單。</p>
+                <div style="background:#e8f4fd; padding:15px; border-radius:8px; border-left: 5px solid #2196f3;">
+                    <strong style="display:block; margin-bottom:5px;">💡 操作說明：</strong>
+                    1. 點擊 <a id="linkData2" href="#" target="_blank" style="text-decoration:underline;">開啟學員資料總表</a><br>
+                    2. 在「學號」欄位輸入學員 ID (必要)<br>
+                    3. 可選填「姓名」、「Email」等欄位
+                </div>
+            </div>
+
+            <!-- 4. 題目管理 (CMS) -->
+            <div class="card">
+                <div class="card-title">課程內容編輯 (CMS)</div>
+                <p class="text-muted mb-2">請先選擇階段，再輸入題目內容。</p>
+
+                <!-- 階段選擇 (層級 1) -->
+                <div class="form-group">
+                    <label>1. 選擇階段 (Stage)</label>
+                    <div style="display:flex; gap:10px;">
+                        <select id="cmsStageSelect"
+                            style="flex:1; padding:12px; border-radius:8px; border:2px solid #e0e0e0;">
+                            <option value="階段一">階段一：基礎概論</option>
+                            <option value="階段二">階段二：實務操作</option>
+                            <option value="課後評量">課後評量</option>
+                            <option value="new">+ 新增階段...</option>
+                        </select>
+                        <input type="text" id="cmsNewStage" placeholder="輸入新階段名稱" style="display:none; flex:1;" />
+                    </div>
+                </div>
+
+                <!-- 題目輸入 (層級 2) -->
+                <div style="background:#f9f9f9; padding:15px; border-radius:8px; border:1px dashed #ccc;">
+                    <label>2. 新增題目 (Question)</label>
+
+                    <div class="form-group">
+                        <input type="text" id="cmsQTitle" placeholder="題目內容 (例如：簡報的核心目的是？)" />
+                    </div>
+
+                    <div class="form-group" style="display:flex; gap:10px;">
+                        <div style="flex:1;">
+                            <label style="font-size:0.8rem;">題型</label>
+                            <select id="cmsQType"
+                                style="width:100%; padding:10px; border-radius:8px; border:1px solid #ddd;">
+                                <option value="單選題">單選題</option>
+                                <option value="簡答題">簡答題</option>
+                            </select>
+                        </div>
+                        <div style="flex:1;">
+                            <label style="font-size:0.8rem;">配分</label>
+                            <input type="number" id="cmsQScore" value="10" style="padding:10px;" />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label style="font-size:0.8rem;">標準答案 (若為選擇題請填選項文字)</label>
+                        <input type="text" id="cmsQAns" placeholder="例如：傳遞價值" />
+                    </div>
+
+                    <button id="btnAddQ" class="btn" style="background:var(--accent-color); color:#000;">+ 新增此題</button>
+                </div>
+
+
+
+
+
+                <div style="text-align:center; margin-top:30px; margin-bottom: 20px;">
+                    <button onclick="location.reload()" class="btn"
+                        style="background:#666; width:auto; padding: 10px 30px;">登出</button>
+                </div>
+            </div>
+
+            <script>
+                const DOM = {
+                    loginCard: document.getElementById('adminLoginCard'),
+                    dashboard: document.getElementById('dashboard'),
+                    inputPwd: document.getElementById('adminPassword'),
+                    btnLogin: document.getElementById('btnLogin'),
+                    msg: document.getElementById('loginMsg'),
+                    statUsers: document.getElementById('statTotalUsers'),
+                    statSubmits: document.getElementById('statTodaySubmits'),
+                    linkMaster: document.getElementById('linkMaster'),
+                    linkData: document.getElementById('linkData')
+                };
+
+                DOM.btnLogin.addEventListener('click', () => {
+                    const pwd = DOM.inputPwd.value;
+                    if (!pwd) return;
+
+                    DOM.btnLogin.disabled = true;
+                    DOM.btnLogin.innerText = "驗證中...";
+
+                    google.script.run
+                        .withSuccessHandler(onLoginSuccess)
+                        .withFailureHandler(onLoginFail)
+                        .apiAdminLogin(pwd);
+                });
+
+                function onLoginSuccess(res) {
+                    if (res.status === 'success') {
+                        DOM.loginCard.style.display = 'none';
+                        DOM.dashboard.style.display = 'block';
+
+                        // 填入數據
+                        DOM.statUsers.innerText = res.data.totalStudents || 0;
+                        DOM.statSubmits.innerText = res.data.totalSubmissions || 0;
+
+                        // 設定連結
+                        DOM.linkMaster.href = res.data.masterUrl;
+                        // 若沒有獨立資料表，就連到主控台
+                        DOM.linkData.href = res.data.masterUrl;
+
+                        // 設定學員資料表連結
+                        const linkData2 = document.getElementById('linkData2');
+                        if (linkData2) {
+                            linkData2.href = res.data.masterUrl + '#gid=' + (res.data.dataSheetId || '0');
+                        }
+                    } else {
+                        showMsg(res.message, 'error');
+                        resetBtn();
+                    }
+                }
+
+                function onLoginFail(err) {
+                    showMsg("系統錯誤: " + err.message, 'error');
+                    resetBtn();
+                }
+
+                function showMsg(txt, type) {
+                    DOM.msg.innerText = txt;
+                    DOM.msg.className = 'message ' + type;
+                    DOM.msg.style.display = 'block';
+                }
+
+                function resetBtn() {
+                    DOM.btnLogin.disabled = false;
+                    DOM.btnLogin.innerText = "登入後台";
+                }
+            </script>
+
+</body>
+
+</html>
