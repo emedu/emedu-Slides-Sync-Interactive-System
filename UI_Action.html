@@ -35,6 +35,7 @@
         }
 
         setLoading(true);
+        DOM.statusMessage.style.display = 'none'; // 開始新操作前隱藏舊訊息
 
         // 呼叫後端 API
         google.script.run
@@ -139,14 +140,20 @@
     // --- 工具函式 ---
 
     function showMessage(msg, type) {
-        DOM.statusMessage.innerText = msg;
+        DOM.statusMessage.innerHTML = (type === 'error' ? '⚠️ ' : '✅ ') + msg;
         DOM.statusMessage.className = 'message ' + type;
         DOM.statusMessage.style.display = 'block';
 
-        if (type === 'success') {
+        if (type === 'error') {
+            // 觸發震動效果
+            DOM.loginCard.classList.add('shake');
+            setTimeout(() => DOM.loginCard.classList.remove('shake'), 500);
+
+            // 錯誤訊息不自動消失，直到下一次處理
+        } else {
             setTimeout(() => {
                 DOM.statusMessage.style.display = 'none';
-            }, 3000);
+            }, 4000);
         }
     }
 

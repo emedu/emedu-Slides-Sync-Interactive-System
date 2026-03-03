@@ -157,7 +157,11 @@ const Service_Engine = (function() {
     _calculateTrackingStatus: function(allQs, currentAnswers, studentId, ssId) {
       // 需要取得該生目前在資料表的所有作答紀錄，以判斷歷史階段是否完成
       // 這裡簡化：假設 Service_DB 可以取得該生完整 row data map
-      const studentData = Service_DB.getStudentRowData(ssId, studentId); // { "題目A": "答案", "題目A (提交時間)": Date... }
+      const studentData = Service_DB.getStudentRowData(ssId, studentId);
+    if (!studentData || Object.keys(studentData).length === 0) {
+      throw new Error("查無此學號，請檢查輸入是否正確或聯繫老師。");
+    }
+ // { "題目A": "答案", "題目A (提交時間)": Date... }
       
       // 合併當前作答 (currentAnswers) 到 studentData (模擬更新後狀態)
       const mergedData = { ...studentData, ...currentAnswers };

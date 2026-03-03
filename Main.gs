@@ -101,10 +101,14 @@ function setupSystem() {
  */
 function apiLogin(studentId) {
   console.log(`[API] 學員登入開始: ${studentId}`);
+  if (!studentId || studentId.trim() === "") {
+    return { status: 'error', message: '請輸入學號才能開始學習唷！' };
+  }
+  
   try {
     const ssid = Service_DB.getMasterId();
     console.log(`[API] Master ID: ${ssid}`);
-    if (!ssid) throw new Error("系統尚未初始化 (Master ID missing)");
+    if (!ssid) throw new Error("系統主控台尚未安裝，請聯絡系統管理員。");
     
     // 直接呼叫引擎取得下一題
     const nextTaskResult = Service_Engine.getStudentNextTask(ssid, studentId);
