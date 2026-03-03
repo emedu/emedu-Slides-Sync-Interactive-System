@@ -99,6 +99,7 @@ function setupSystem() {
 /**
  * API: 學生登入並取得題目
  */
+function apiLogin(studentId) {
   console.log(`[API] 學員登入開始: ${studentId}`);
   try {
     const ssid = Service_DB.getMasterId();
