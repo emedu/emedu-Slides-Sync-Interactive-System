@@ -13,7 +13,7 @@ const Service_DB = (function() {
 
   // --- 設定常數 (保留 v9.4.2 設定) ---
   const CONFIG = {
-    MASTER_SPREADSHEET_NAME: "伊美：簡報同步互動學習系統 - 主控台 v10.0",
+    MASTER_SPREADSHEET_NAME: "emedu-Slides-Sync-Interactive-System - 主控台 v10.0",
     MASTER_SETTINGS_SHEET: "系統設定",
     ACT_SETTINGS_SNAPSHOT: "系統設定(快照)",
     DATA_SHEET_NAME: "學員資料總表",
@@ -160,25 +160,23 @@ const Service_DB = (function() {
        let sheet = ss.getSheetByName(CONFIG.MASTER_SETTINGS_SHEET);
        if (!sheet) return { status: 'error', message: '找不到設定表' };
        
-       // Headers參考: Label, Form Title, Question, Ans Col, Type, Options, Std Ans, Score, Help, ...
-       // 取得最後一列
-       const lastRow = sheet.getLastRow();
-       
        const newRow = [
-         questionData.label || "未分類", // 階段 default
-         `學習系統：${questionData.label || "未命名"}`, // 預設標題
-         questionData.question || "未命名題目",       // 問題
-         questionData.key || `Q${Date.now()}`, // 答案欄位 (自動產生)
-         questionData.type || "單選題",           // 類型
-         questionData.options || "",  // 選項
-         questionData.answer || "",   // 標準答案
-         Number(questionData.score) || 0,     // 分數 (Ensure number)
-         questionData.desc || "",     // 提示
-         "", // 截止日
-         ""  // 必修數
+         questionData.label || "未分類",
+         `學習系統：${questionData.label || "未命名"}`,
+         questionData.question || "未命名題目",
+         questionData.key || `Q${Date.now()}`,
+         questionData.type || "單選題",
+         questionData.options || "",
+         questionData.answer || "",
+         Number(questionData.score) || 0,
+         questionData.desc || "",
+         "",
+         ""
        ];
        
        sheet.appendRow(newRow);
+       // 題目新增後清除快取，確保下次 getActivityConfig 讀到最新資料
+       this.clearActivityConfigCache(ssId);
        return { status: 'success' };
     },
 
@@ -195,20 +193,47 @@ const Service_DB = (function() {
      */
     /**
      * 讀取活動設定表 (快照或設定)
+     * 效能優化：使用 CacheService 快取 60 秒，避免每次 API 呼叫重複讀取 Spreadsheet
      */
     getActivityConfig: function(ssId) {
+       const cacheKey = 'activity_config_' + ssId;
+       const cache = CacheService.getScriptCache();
+       const cached = cache.get(cacheKey);
+       if (cached) {
+         try { return JSON.parse(cached); } catch(e) { /* 快取損毀，重新讀取 */ }
+       }
+
        const ss = SpreadsheetApp.openById(ssId);
        // 優先找快照，找不到找一般設定
        let sheet = ss.getSheetByName(CONFIG.ACT_SETTINGS_SNAPSHOT);
        if (!sheet) sheet = ss.getSheetByName(CONFIG.MASTER_SETTINGS_SHEET);
-       return this.readConfig(sheet);
+       const config = this.readConfig(sheet);
+
+       // 寫入快取 (CacheService 最大 100KB，序列化前先確認)
+       try {
+         const serialized = JSON.stringify(config);
+         if (serialized.length < 90000) {
+           cache.put(cacheKey, serialized, 60); // 60 秒快取
+         }
+       } catch(e) { /* 序列化失敗不影響主流程 */ }
+
+       return config;
+    },
+
+    /**
+     * 清除活動設定快取 (題目異動後應呼叫)
+     */
+    clearActivityConfigCache: function(ssId) {
+       CacheService.getScriptCache().remove('activity_config_' + ssId);
     },
 
     /**
      * 更新資料工作表
      */
-    updateStudentData: function(ssid, sheetName, studentId, email, keyColumn, value, scoreColumn, score, timestampColumn) {
-       // ... existing code ...
+    /**
+     * 更新學員資料 (單筆或批次)
+     */
+    updateStudentData: function(ssid, sheetName, studentId, email, updates) {
        const ss = SpreadsheetApp.openById(ssid);
        const sheet = ss.getSheetByName(sheetName);
        if (!sheet) return;
@@ -221,13 +246,17 @@ const Service_DB = (function() {
        const emCol = headerMap["Email"];
        if (!sidCol) return;
        
-       // 尋找或建立列
+       // 優化搜尋：一次讀取所有學號
        let row = -1;
-       const data = sheet.getRange(2, sidCol, Math.max(sheet.getLastRow()-1, 1), 1).getValues();
-       for(let i=0; i<data.length; i++) {
-         if(String(data[i][0]).toLowerCase() === String(studentId).toLowerCase()) {
-           row = i + 2;
-           break;
+       const lastRow = sheet.getLastRow();
+       if (lastRow > 1) {
+         const sidValues = sheet.getRange(2, sidCol, lastRow - 1, 1).getValues();
+         const searchId = String(studentId).toLowerCase();
+         for(let i=0; i<sidValues.length; i++) {
+           if(String(sidValues[i][0]).toLowerCase() === searchId) {
+             row = i + 2;
+             break;
+           }
          }
        }
        
@@ -237,42 +266,56 @@ const Service_DB = (function() {
          if (email && emCol) newRow[emCol - 1] = email;
          sheet.appendRow(newRow);
          row = sheet.getLastRow();
-       } else {
-          // 更新 Email?
-          if (email && emCol) sheet.getRange(row, emCol).setValue(email);
+       } else if (email && emCol) {
+         sheet.getRange(row, emCol).setValue(email);
        }
        
-       // 寫入資料
-       const now = new Date();
-       if (headerMap[keyColumn]) sheet.getRange(row, headerMap[keyColumn]).setValue(value);
-       if (scoreColumn && headerMap[scoreColumn]) sheet.getRange(row, headerMap[scoreColumn]).setValue(score);
-       if (timestampColumn && headerMap[timestampColumn]) sheet.getRange(row, headerMap[timestampColumn]).setValue(now);
+       // 批次寫入：一次讀取整列，批次更新，最後一次 setValues 寫回，避免 N 次 API 呼叫
+       const totalCols = sheet.getLastColumn();
+       const rowRange = sheet.getRange(row, 1, 1, totalCols);
+       const rowValues = rowRange.getValues()[0]; // 取得現有列資料
+
+       let hasUpdate = false;
+       for (const key in updates) {
+         const col = headerMap[key];
+         if (col) {
+           rowValues[col - 1] = updates[key]; // 更新陣列 (0-indexed)
+           hasUpdate = true;
+         }
+       }
+
+       if (hasUpdate) {
+         rowRange.setValues([rowValues]); // 一次寫回整列
+       }
     },
     
     /**
      * 取得學員完整資料列 (回傳 Map: Header -> Value)
      */
-    getStudentRowData: function(ssid, studentId) {
-       const ss = SpreadsheetApp.openById(ssid);
-       const sheet = ss.getSheetByName(CONFIG.DATA_SHEET_NAME);
-       if (!sheet || sheet.getLastRow() < 2) return {};
-       
-       const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-       const sidColIndex = headers.indexOf("學號");
-       if (sidColIndex === -1) return {};
-       
-       const data = sheet.getRange(2, 1, sheet.getLastRow()-1, sheet.getLastColumn()).getValues();
-       for (let i = 0; i < data.length; i++) {
-         if (String(data[i][sidColIndex]).toLowerCase() === String(studentId).toLowerCase()) {
-            const rowMap = {};
-            headers.forEach((h, idx) => {
-              rowMap[h] = data[i][idx];
-            });
-            return rowMap;
-         }
-       }
-       return {};
-    },
+     getStudentRowData: function(ssid, studentId) {
+        const ss = SpreadsheetApp.openById(ssid);
+        const sheet = ss.getSheetByName(CONFIG.DATA_SHEET_NAME);
+        if (!sheet) return {};
+        const lastRow = sheet.getLastRow();
+        if (lastRow < 2) return {};
+        
+        const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+        const sidColIndex = headers.indexOf("學號");
+        if (sidColIndex === -1) return {};
+        
+        const data = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+        const searchId = String(studentId).toLowerCase();
+        for (let i = 0; i < data.length; i++) {
+          if (String(data[i][sidColIndex]).toLowerCase() === searchId) {
+             const rowMap = {};
+             headers.forEach((h, idx) => {
+               rowMap[h] = data[i][idx];
+             });
+             return rowMap;
+          }
+        }
+        return {};
+     },
     
     /**
      * 更新追蹤表
@@ -322,6 +365,35 @@ const Service_DB = (function() {
         return map;
     },
     
+    /**
+     * 生成學員學習歷程 (Portfolio) - 用於備份與存檔
+     */
+    generateLearningPortfolio: function(ssid, studentId) {
+       const studentData = this.getStudentRowData(ssid, studentId);
+       const config = this.getActivityConfig(ssid);
+       
+       let md = `# emedu 學習歷程備份 - 學號: ${studentId}\n\n`;
+       md += `> 系統名稱: ${CONFIG.MASTER_SPREADSHEET_NAME}\n`;
+       md += `> 備份時間: ${new Date().toLocaleString()}\n\n`;
+       md += `## 📚 課程互動紀錄\n\n`;
+       
+       config.forEach(q => {
+         const ans = studentData[q.targetColumn];
+         const score = studentData[q.scoreColumn];
+         const time = studentData[q.timestampColumn];
+         
+         if (ans) {
+           md += `### 🏷️ [${q.label}] ${q.question}\n`;
+           md += `- **作答內容**: ${ans}\n`;
+           md += `- **得分**: ${score} / ${q.score}\n`;
+           md += `- **提交時間**: ${time ? new Date(time).toLocaleString() : "N/A"}\n`;
+           md += `\n`;
+         }
+       });
+       
+       return md;
+    },
+
     CONFIG // 導出設定供其他模組參考
   };
 

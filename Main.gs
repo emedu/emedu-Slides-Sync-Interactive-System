@@ -91,19 +91,13 @@ function setupSystem() {
  * API: 學生登入並取得題目
  */
 function apiLogin(studentId) {
-  // 簡單實作：取得活動設定，回傳第一題
-  // 完整版應呼叫 Service_Engine 計算進度
   const start = new Date();
   
   try {
     const ssid = Service_DB.getMasterId();
     if (!ssid) throw new Error("系統尚未初始化 (Master ID missing)");
     
-    // 取得所有題目
-    const allQs = Service_DB.getActivityConfig(ssid);
-    if (!allQs || allQs.length === 0) throw new Error("尚未設定題目");
-    
-    // 呼叫引擎取得下一題
+    // 直接呼叫引擎取得下一題（Engine 內部負責讀取設定，避免重複讀取）
     const nextTaskResult = Service_Engine.getStudentNextTask(ssid, studentId);
     
     if (nextTaskResult.status === 'completed') {
@@ -112,6 +106,11 @@ function apiLogin(studentId) {
          completed: true,
          message: "恭喜！您已完成所有課程任務。"
        };
+    }
+    
+    // 若無任何題目 (空設定)
+    if (!nextTaskResult.question) {
+      throw new Error("尚未設定題目");
     }
     
     const q = nextTaskResult.question;
@@ -130,6 +129,7 @@ function apiLogin(studentId) {
     return { status: 'error', message: e.toString() }; 
   }
 }
+
 
 /**
  * API: 管理員登入與資料獲取
@@ -202,6 +202,35 @@ function apiSubmit(studentId, stage, question, answer) {
     return result;
     
   } catch (e) {
+    return { status: 'error', message: e.toString() };
+  }
+}
+
+/**
+ * API: 取得所有階段清單 (Admin Only)
+ * 從試算表動態讀取，確保 UI 與設定同步
+ */
+function apiGetStages(password) {
+  try {
+    if (!Service_Security.verifyAdmin(password)) {
+      return { status: 'error', message: '權限不足' };
+    }
+    const ssid = Service_DB.getMasterId();
+    if (!ssid) return { status: 'error', message: '系統尚未初始化' };
+
+    const allQs = Service_DB.getActivityConfig(ssid);
+    // 依照出現順序去重，保留唯一階段標籤
+    const seen = new Set();
+    const stages = [];
+    allQs.forEach(q => {
+      if (q.label && !seen.has(q.label)) {
+        seen.add(q.label);
+        stages.push(q.label);
+      }
+    });
+
+    return { status: 'success', stages };
+  } catch(e) {
     return { status: 'error', message: e.toString() };
   }
 }

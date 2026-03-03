@@ -1,4 +1,4 @@
-# **「伊美：簡報同步互動學習系統」 v10.0 技術開發白皮書**
+# **emedu-Slides-Sync-Interactive-System v10.0 技術開發白皮書**
 
 ## **一、 設計理念與全場景應用 (Vision & Multi-Scene)**
 

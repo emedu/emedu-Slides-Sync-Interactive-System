@@ -28,26 +28,35 @@ const Service_AI = (function() {
         };
       }
 
-      // 建構提示詞 (Prompt)
-      const prompt = `
-        你是一位專業的簡報與溝通教練。請針對以下學員的作答提供簡短、建設性的回饋。
-        
-        題目：${question}
-        學員回答：${answer}
-        
-        請提供：
-        1. 評語 (50字以內)
-        2. 一個具體的改進建議
-        
-        回傳格式請直接給予純文字建議即可。
-      `;
+      // 構建系統指令與提示詞 (NLP 優化: 教練人格與結構化輸出)
+      const systemInstruction = `你是一位專業的「emedu 簡報同步互動教練」。您的目標是協助學員提升簡報與溝通技巧。
+請針對學員的作答提供專業、正向且具體的回饋。
+必須以 JSON 格式回傳，格式如下：
+{
+  "rating": "優秀|良好|待加強",
+  "comment": "50字內的短評",
+  "suggestions": ["建議1", "建議2"]
+}`;
+
+      const userPrompt = `
+課程情境：${context || "通用簡報技巧課程"}
+題目：${question}
+學員回答：${answer}
+
+請分析上述作答並提供回饋。`;
 
       try {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`;
         const payload = {
+          system_instruction: {
+            parts: [{ text: systemInstruction }]
+          },
           contents: [{
-            parts: [{ text: prompt }]
-          }]
+            parts: [{ text: userPrompt }]
+          }],
+          generationConfig: {
+            response_mime_type: "application/json"
+          }
         };
 
         const options = {
@@ -65,12 +74,14 @@ const Service_AI = (function() {
           return { feedback: "無法取得 AI 建議 (API Error)", suggestions: [] };
         }
 
-        const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
+        const responseText = json.candidates?.[0]?.content?.parts?.[0]?.text;
         
-        if (text) {
+        if (responseText) {
+          const aiResult = JSON.parse(responseText);
           return {
-            feedback: text.trim(),
-            suggestions: [] // 簡單起見，將建議包含在 feedback 文字中
+            rating: aiResult.rating,
+            feedback: aiResult.comment,
+            suggestions: aiResult.suggestions || []
           };
         } else {
            return { feedback: "AI 無法產生回應", suggestions: [] };

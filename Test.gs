@@ -129,9 +129,10 @@ function test_Integration_MockSubmission() {
       ];
     };
     
-    Service_DB.updateStudentData = function() {
+    Service_DB.updateStudentData = function(ssid, sheet, sid, email, updates) {
       updateDataCalled = true;
-      console.log("Mock updateStudentData called");
+      console.log("Mock updateStudentData called with updates:", JSON.stringify(updates));
+      if (updates["A1"] !== "A") throw new Error("Update value mismatch");
     };
     
     Service_DB.updateTrackingData = function() {

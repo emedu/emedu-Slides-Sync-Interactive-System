@@ -1,10 +1,10 @@
-# 📘 伊美：簡報同步互動學習系統 v10.0 使用與部署手冊
+# 📘 emedu-Slides-Sync-Interactive-System v10.0 使用與部署手冊
 
 ---
 
-## **✨ 系統簡介 (伊美：簡報同步互動學習系統 v10.0)**
+## **✨ 系統簡介 (emedu-Slides-Sync-Interactive-System v10.0)**
 
-本系統為 **v10.0 架構重構版**，專為 **伊美：簡報同步互動學習系統** 設計，將原本的 Google Forms 依賴轉為 **全自主 Web App** 介面。
+本系統為 **v10.0 架構重構版**，專為 **emedu-Slides-Sync-Interactive-System** 設計，將原本的 Google Forms 依賴轉為 **全自主 Web App** 介面。
 核心功能不變，但體驗與穩定性大幅提升：
 
 *   **📱 手機優先介面**：專為學員手機掃碼設計的響應式網頁。
@@ -21,7 +21,7 @@
 ### **1. 建立 Google Apps Script 專案**
 1.  前往 [Google Apps Script 首頁](https://script.google.com/)。
 2.  點選左上角 **「新專案」**。
-3.  點擊標題「未命名的專案」，重新命名為 `伊美：簡報同步互動學習系統`。
+3.  點擊標題「未命名的專案」，重新命名為 `emedu-Slides-Sync-Interactive-System`。
 
 ### **2. 植入程式碼**
 請將本專案資料夾中的檔案內容，依檔名複製到 GAS 編輯器中：
@@ -132,7 +132,7 @@
 
 ### **1. 進入系統**
 *   學員掃描 QR Code 或點擊連結。
-*   看到 **「伊美：簡報同步互動學習系統」** 還有 **海軍藍** 背景的介面。
+*   看到 **「emedu-Slides-Sync-Interactive-System」** 還有 **海軍藍** 背景的介面。
 
 ### **2. 登入**
 *   首次需輸入 **學號** (必填)。

@@ -86,6 +86,10 @@ const Service_Engine = (function() {
       let totalStageScore = 0;
       
       // 2. 遍歷題目計算分數並寫入
+      const updates = {};
+      const now = new Date();
+      
+      // 2. 遍歷題目計算分數並寫入
       stageQs.forEach(q => {
         const rawAns = answers[q.question];
         if (rawAns !== undefined) {
@@ -93,20 +97,23 @@ const Service_Engine = (function() {
           const score = Scoring.scoreAnswer(q, rawAns);
           totalStageScore += score;
           
-          // 寫入資料表 (Data Sheet)
-          Service_DB.updateStudentData(
-            ssId, 
-            Service_DB.CONFIG.DATA_SHEET_NAME,
-            studentId, 
-            answers['Email'] || null, // 若有 Email
-            q.targetColumn, 
-            Scoring.normalizeAnswerForStore(rawAns),
-            q.scoreColumn,
-            score,
-            q.timestampColumn
-          );
+          // 收集更新
+          updates[q.targetColumn] = Scoring.normalizeAnswerForStore(rawAns);
+          if (q.scoreColumn) updates[q.scoreColumn] = score;
+          if (q.timestampColumn) updates[q.timestampColumn] = now;
         }
       });
+
+      // 批次寫入資料表 (Data Sheet) - 僅呼叫一次
+      if (Object.keys(updates).length > 0) {
+        Service_DB.updateStudentData(
+          ssId, 
+          Service_DB.CONFIG.DATA_SHEET_NAME,
+          studentId, 
+          answers['Email'] || null,
+          updates
+        );
+      }
 
       // 3. 更新進度追蹤表 (Tracking Sheet)
       // 需計算所有階段完成度

@@ -69,10 +69,13 @@
             <div class="card-title">管理員登入</div>
             <div class="form-group">
                 <label>管理密碼</label>
-                <input type="password" id="adminPassword" placeholder="預設: admin123" />
+                <input type="password" id="adminPassword" placeholder="請輸入管理員密碼" />
             </div>
             <button id="btnLogin" class="btn">登入後台</button>
             <div id="loginMsg" class="message" style="display:none; margin-top:10px;"></div>
+            <p style="margin-top:12px; font-size:0.78rem; color:#999; text-align:center;">
+                首次使用？請在 Apps Script 編輯器執行 <code>initAdminPassword()</code> 設定密碼。
+            </p>
         </div>
 
         <!-- 2. 儀表板 (登入後顯示) -->
@@ -119,15 +122,15 @@
                 <!-- 階段選擇 (層級 1) -->
                 <div class="form-group">
                     <label>1. 選擇階段 (Stage)</label>
-                    <div style="display:flex; gap:10px;">
+                    <div style="display:flex; gap:10px; align-items:center;">
                         <select id="cmsStageSelect"
                             style="flex:1; padding:12px; border-radius:8px; border:2px solid #e0e0e0;">
-                            <option value="階段一">階段一：基礎概論</option>
-                            <option value="階段二">階段二：實務操作</option>
-                            <option value="課後評量">課後評量</option>
-                            <option value="new">+ 新增階段...</option>
+                            <option value="">⏳ 載入中...</option>
                         </select>
-                        <input type="text" id="cmsNewStage" placeholder="輸入新階段名稱" style="display:none; flex:1;" />
+                        <input type="text" id="cmsNewStage" placeholder="輸入新階段名稱，按 Enter 確認"
+                            style="display:none; flex:1; padding:12px; border-radius:8px; border:2px solid var(--primary-color);" />
+                    </div>
+                    <div id="stageLoadError" style="display:none; color:#e53e3e; font-size:0.8rem; margin-top:4px;">
                     </div>
                 </div>
 
@@ -209,7 +212,6 @@
 
                         // 設定連結
                         DOM.linkMaster.href = res.data.masterUrl;
-                        // 若沒有獨立資料表，就連到主控台
                         DOM.linkData.href = res.data.masterUrl;
 
                         // 設定學員資料表連結
@@ -217,11 +219,121 @@
                         if (linkData2) {
                             linkData2.href = res.data.masterUrl + '#gid=' + (res.data.dataSheetId || '0');
                         }
+
+                        // 動態載入階段清單
+                        loadStages();
                     } else {
                         showMsg(res.message, 'error');
                         resetBtn();
                     }
                 }
+
+                function loadStages() {
+                    const select = document.getElementById('cmsStageSelect');
+                    const errDiv = document.getElementById('stageLoadError');
+                    const pwd = DOM.inputPwd.value;
+
+                    google.script.run
+                        .withSuccessHandler(function (res) {
+                            select.innerHTML = '';
+                            if (res.status === 'success' && res.stages.length > 0) {
+                                res.stages.forEach(function (label) {
+                                    const opt = document.createElement('option');
+                                    opt.value = label;
+                                    opt.textContent = label;
+                                    select.appendChild(opt);
+                                });
+                            } else {
+                                // 試算表尚無設定，顯示提示選項
+                                const opt = document.createElement('option');
+                                opt.value = '';
+                                opt.textContent = '（試算表尚無階段，請先新增）';
+                                select.appendChild(opt);
+                            }
+                            // 加入「+ 新增階段」選項
+                            const newOpt = document.createElement('option');
+                            newOpt.value = '__new__';
+                            newOpt.textContent = '＋ 新增階段...';
+                            select.appendChild(newOpt);
+                        })
+                        .withFailureHandler(function (err) {
+                            errDiv.textContent = '無法載入階段清單：' + err.message;
+                            errDiv.style.display = 'block';
+                        })
+                        .apiGetStages(pwd);
+                }
+
+                // 監聽「+ 新增階段」選項切換
+                document.getElementById('cmsStageSelect').addEventListener('change', function () {
+                    const newStageInput = document.getElementById('cmsNewStage');
+                    if (this.value === '__new__') {
+                        newStageInput.style.display = 'block';
+                        newStageInput.focus();
+                    } else {
+                        newStageInput.style.display = 'none';
+                        newStageInput.value = '';
+                    }
+                });
+
+                // 新增題目按鈕邏輯
+                document.getElementById('btnAddQ').addEventListener('click', function () {
+                    const select = document.getElementById('cmsStageSelect');
+                    const newStageInput = document.getElementById('cmsNewStage');
+
+                    // 判斷是使用既有階段或新增階段
+                    const stage = select.value === '__new__'
+                        ? newStageInput.value.trim()
+                        : select.value;
+
+                    if (!stage) {
+                        showMsg('請選擇或輸入階段名稱', 'error');
+                        return;
+                    }
+
+                    const question = document.getElementById('cmsQTitle').value.trim();
+                    const type = document.getElementById('cmsQType').value;
+                    const score = document.getElementById('cmsQScore').value;
+                    const answer = document.getElementById('cmsQAns').value.trim();
+
+                    if (!question) {
+                        showMsg('請輸入題目內容', 'error');
+                        return;
+                    }
+
+                    const btn = document.getElementById('btnAddQ');
+                    btn.disabled = true;
+                    btn.innerText = '新增中...';
+
+                    google.script.run
+                        .withSuccessHandler(function (res) {
+                            btn.disabled = false;
+                            btn.innerText = '+ 新增此題';
+                            if (res.status === 'success') {
+                                showMsg('✅ 題目已新增！', 'success');
+                                // 清空輸入欄
+                                document.getElementById('cmsQTitle').value = '';
+                                document.getElementById('cmsQAns').value = '';
+                                // 若是新增了新階段，重新載入選單
+                                if (select.value === '__new__') {
+                                    loadStages();
+                                }
+                            } else {
+                                showMsg('新增失敗：' + res.message, 'error');
+                            }
+                        })
+                        .withFailureHandler(function (err) {
+                            btn.disabled = false;
+                            btn.innerText = '+ 新增此題';
+                            showMsg('連線錯誤：' + err.message, 'error');
+                        })
+                        .apiAddQuestion(DOM.inputPwd.value, {
+                            label: stage,
+                            question: question,
+                            type: type,
+                            score: Number(score) || 10,
+                            answer: answer
+                        });
+                });
 
                 function onLoginFail(err) {
                     showMsg("系統錯誤: " + err.message, 'error');

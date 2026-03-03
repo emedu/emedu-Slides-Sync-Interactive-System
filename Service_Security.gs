@@ -6,11 +6,27 @@
  * 2. 身份驗證 (Identity Verification)
  * 
  * 遷移自 v9.4.2: withSubmitGuard_
+ * v10.1 安全更新：密碼改用 SHA-256 雜湊儲存與比對，移除明文 fallback
  */
 
 const Service_Security = (function() {
   
   const SUBMIT_GUARD_SECONDS = 60; // 預設 60 秒
+  const ADMIN_PASSWORD_PROP = 'ADMIN_PASSWORD_HASH'; // 儲存雜湊值的 Property key
+
+  /**
+   * 計算字串的 SHA-256 雜湊值 (16 進位字串)
+   * @param {string} input
+   * @returns {string}
+   */
+  function _sha256(input) {
+    const rawBytes = Utilities.computeDigest(
+      Utilities.DigestAlgorithm.SHA_256,
+      String(input),
+      Utilities.Charset.UTF_8
+    );
+    return rawBytes.map(b => ('0' + (b & 0xFF).toString(16)).slice(-2)).join('');
+  }
 
   return {
     
@@ -28,13 +44,14 @@ const Service_Security = (function() {
         return false; // 鎖定中，阻擋
       }
       
-      // 設定鎖定
       cache.put(key, "1", SUBMIT_GUARD_SECONDS);
       return true;
     },
     
     /**
-     * 驗證學號格式 (簡單範例)
+     * 驗證學號格式
+     * @param {string} sid
+     * @returns {boolean}
      */
     validateStudentId: function(sid) {
       if (!sid || sid.trim().length === 0) return false;
@@ -42,12 +59,51 @@ const Service_Security = (function() {
     },
 
     /**
-     * 驗證管理員密碼
+     * 驗證管理員密碼 (以 SHA-256 雜湊比對)
+     * 注意：必須先呼叫 setAdminPassword() 完成初始化，否則會拒絕所有登入。
+     * @param {string} password - 使用者輸入的明文密碼
+     * @returns {boolean}
      */
     verifyAdmin: function(password) {
-      // 預設密碼 admin123，實際運作建議修改
-      const stored = PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD') || 'admin123';
-      return String(password) === stored;
+      const storedHash = PropertiesService.getScriptProperties().getProperty(ADMIN_PASSWORD_PROP);
+      
+      // 安全政策：若尚未設定密碼，一律拒絕，避免以預設值登入
+      if (!storedHash) {
+        console.warn('[Security] ADMIN_PASSWORD_HASH 尚未設定，請先執行 Service_Security.setAdminPassword() 初始化密碼。');
+        return false;
+      }
+      
+      return _sha256(password) === storedHash;
+    },
+
+    /**
+     * 🟢 [手動執行] 設定管理員密碼
+     * 請在 Apps Script 編輯器中直接呼叫此函式（選擇函式後點「執行」）。
+     * 密碼會以 SHA-256 雜湊形式儲存至 Script Properties，明文不會被保留。
+     * 
+     * @param {string} newPassword - 新密碼（至少 8 字元，建議含英數混合）
+     */
+    setAdminPassword: function(newPassword) {
+      if (!newPassword || String(newPassword).trim().length < 8) {
+        throw new Error('密碼長度不足，請至少設定 8 個字元的密碼。');
+      }
+      const hash = _sha256(String(newPassword).trim());
+      PropertiesService.getScriptProperties().setProperty(ADMIN_PASSWORD_PROP, hash);
+      console.log('✅ 管理員密碼已更新（已雜湊儲存）。請妥善保管您的密碼，系統無法還原明文。');
     }
   };
 })();
+
+/**
+ * 🟢 [手動執行入口] 設定管理員密碼
+ * 請修改下方的 NEW_PASSWORD，然後在 Apps Script 編輯器執行此函式。
+ * 執行完成後，請將此函式的密碼恢復為空字串以保護安全。
+ */
+function initAdminPassword() {
+  const NEW_PASSWORD = ''; // ← 在此填入您的新密碼 (至少8字元)，執行後清空
+  if (!NEW_PASSWORD) {
+    console.error('❌ 請先在 initAdminPassword() 函式中填入新密碼，再執行。');
+    return;
+  }
+  Service_Security.setAdminPassword(NEW_PASSWORD);
+}
