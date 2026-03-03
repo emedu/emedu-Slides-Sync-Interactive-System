@@ -48,12 +48,21 @@ function _renderPortal(e) {
   // 如果已登入，呼叫 Service_Engine 取得當前狀態
   
   const template = HtmlService.createTemplateFromFile('UI_Portal');
-  // 修正：直接將變數指派給 template 物件，以便在 HTML 中直接使用 <?= title ?>
-  template.title = '伊美：簡報同步互動學習系統';
-  template.activityName = '載入中...';
+  template.title = '伊美：簡報同步互動學習系統 v10.1';
+  
+  // 嘗試取得活動名稱
+  let actName = "互動學習門戶";
+  try {
+    const ssid = Service_DB.getMasterId();
+    if (ssid) {
+      actName = SpreadsheetApp.openById(ssid).getName();
+    }
+  } catch(e) { console.warn("無法取得活動名稱: " + e.message); }
+  
+  template.activityName = actName;
   
   return template.evaluate()
-      .setTitle('伊美：簡報同步互動學習系統')
+      .setTitle('伊美：簡報同步互動學習系統 v10.1')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
@@ -90,15 +99,15 @@ function setupSystem() {
 /**
  * API: 學生登入並取得題目
  */
-function apiLogin(studentId) {
-  const start = new Date();
-  
+  console.log(`[API] 學員登入開始: ${studentId}`);
   try {
     const ssid = Service_DB.getMasterId();
+    console.log(`[API] Master ID: ${ssid}`);
     if (!ssid) throw new Error("系統尚未初始化 (Master ID missing)");
     
-    // 直接呼叫引擎取得下一題（Engine 內部負責讀取設定，避免重複讀取）
+    // 直接呼叫引擎取得下一題
     const nextTaskResult = Service_Engine.getStudentNextTask(ssid, studentId);
+    console.log(`[API] 下一步任務結果: ${JSON.stringify(nextTaskResult)}`);
     
     if (nextTaskResult.status === 'completed') {
        return {
