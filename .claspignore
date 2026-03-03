@@ -1,0 +1,12 @@
+**/*.md
+**/*.js
+.git/
+node_modules/
+專案文件_ProjectDocs/
+implementation_plan_admin.md
+ui_concept_display.md
+任務清單.md
+執行計畫.md
+重構完成報告.md
+📘 伊美全自動互動學習追蹤系統 v9.4.2 使用手冊+程式碼.md
+local_test_runner.js

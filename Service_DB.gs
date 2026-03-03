@@ -303,13 +303,13 @@ const Service_DB = (function() {
         const sidColIndex = headers.indexOf("學號");
         if (sidColIndex === -1) return {};
         
-        const data = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
-        const searchId = String(studentId).toLowerCase();
-        for (let i = 0; i < data.length; i++) {
-          if (String(data[i][sidColIndex]).toLowerCase() === searchId) {
+        const fullData = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+        const searchId = String(studentId).toLowerCase().trim();
+        for (let i = 0; i < fullData.length; i++) {
+          if (String(fullData[i][sidColIndex]).toLowerCase().trim() === searchId) {
              const rowMap = {};
              headers.forEach((h, idx) => {
-               rowMap[h] = data[i][idx];
+               rowMap[h] = fullData[i][idx];
              });
              return rowMap;
           }
