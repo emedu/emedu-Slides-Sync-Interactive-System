@@ -48,21 +48,13 @@ function _renderPortal(e) {
   // 如果已登入，呼叫 Service_Engine 取得當前狀態
   
   const template = HtmlService.createTemplateFromFile('UI_Portal');
-  template.title = '伊美：簡報同步互動學習系統 v10.1';
+  template.title = '伊美：簡報同步互動學習系統 v10.2.0 (Admin CMS 2.0)';
   
-  // 嘗試取得活動名稱
-  let actName = "互動學習門戶";
-  try {
-    const ssid = Service_DB.getMasterId();
-    if (ssid) {
-      actName = SpreadsheetApp.openById(ssid).getName();
-    }
-  } catch(e) { console.warn("無法取得活動名稱: " + e.message); }
-  
-  template.activityName = actName;
+  // 固定顯示正確版號，防止試算表名稱過舊導致誤導
+  template.activityName = 'emedu-Slides-Sync-Interactive-System - v10.2.0';
   
   return template.evaluate()
-      .setTitle('伊美：簡報同步互動學習系統 v10.1')
+      .setTitle('伊美：簡報同步互動學習系統 v10.2.0')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
@@ -128,10 +120,9 @@ function apiLogin(studentId) {
     }
     
     const q = nextTaskResult.question;
-    
-    return {
+    const result = {
       status: 'success',
-      datestamp: new Date(),
+      datestamp: new Date().toISOString(), // 轉為 ISO 字串，避免序列化問題
       task: {
         stage: q.label,
         question: q.question,
@@ -139,8 +130,12 @@ function apiLogin(studentId) {
         desc: q.helpText || "(無提示)"
       }
     };
+    
+    console.log(`[API] 登入結果回傳成功: ${studentId}`);
+    return result;
   } catch (e) {
-    return { status: 'error', message: e.toString() }; 
+    console.error(`[API] 登入失敗意外錯誤: ${e.toString()}`);
+    return { status: 'error', message: "系統發生錯誤: " + e.toString() }; 
   }
 }
 
@@ -255,3 +250,108 @@ function apiGetStages(password) {
 function doPost(e) {
   return ContentService.createTextOutput("POST request received");
 }
+
+// --- Admin CMS 2.0 擴充 API ---
+
+/**
+ * 取得系統環境診斷報告
+ */
+function apiGetSystemStatus(password) {
+  if (!Service_Security.verifyAdmin(password)) return { status: 'error', message: '權限不足' };
+  
+  const masterId = Service_DB.getMasterId();
+  const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  
+  return {
+    status: 'success',
+    data: {
+      spreadsheetId: masterId,
+      hasApiKey: !!apiKey,
+      version: 'v10.2.0',
+      timezone: Session.getScriptTimeZone(),
+      user: Session.getActiveUser().getEmail()
+    }
+  };
+}
+
+/**
+ * 清除系統全域快取
+ */
+function apiClearCache(password) {
+  if (!Service_Security.verifyAdmin(password)) return { status: 'error', message: '權限不足' };
+  const masterId = Service_DB.getMasterId();
+  Service_DB.clearActivityConfigCache(masterId);
+  return { status: 'success', message: '已成功清除活動設定快取' };
+}
+
+/**
+ * 取得說明文件內容
+ */
+function apiGetManual(password, manualId) {
+  if (!Service_Security.verifyAdmin(password)) return { status: 'error', message: '權限不足' };
+  
+  // 這裡可根據 manualId 回傳不同的文件內容
+  // 為求精確，我們直接回傳「試算表全功能維護手冊」的內容
+  // (在實際 GAS 環境，如果 .md 檔沒一起 push 上去，這裡改用硬編碼或字串)
+  const content = `
+### 📂 系統三大核心分頁概覽
+1. **[系統設定]**：系統的「大腦」，決定題目、分數與題型。
+2. **[學員資料總表]**：系統的「保險箱」，存放原始答案。
+3. **[進度追蹤表]**：系統的「儀表板」，監看完成進度。
+
+### 🛠️ 核心設定 SOP
+- **選項 (F欄)**：請用 **英文半形逗號 ,** 分隔。
+- **答案欄位名稱 (D欄)**：必須唯一，不可重複且設定後不建議修改。
+- **自動計分**：系統會將學員答案與 **標準答案 (G欄)** 進行比對。
+  `;
+  
+  return { status: 'success', content: content };
+}
+
+// ============================================================
+// 多活動管理 API
+// ============================================================
+
+/**
+ * API: 取得活動清單 (Admin Only)
+ */
+function apiGetActivityList(password) {
+  if (!Service_Security.verifyAdmin(password)) return { status: 'error', message: '權限不足' };
+  const ssid = Service_DB.getMasterId();
+  if (!ssid) return { status: 'error', message: '系統尚未初始化' };
+  try {
+    const list = Service_DB.getActivityList(ssid);
+    const currentId = Service_DB.getActiveActivityId() || 'default';
+    return { status: 'success', activities: list, currentId: currentId };
+  } catch(e) {
+    return { status: 'error', message: e.toString() };
+  }
+}
+
+/**
+ * API: 建立新活動 (Admin Only)
+ * @param {string} password - 管理密碼
+ * @param {string} activityName - 活動名稱（如 "2025秋季班"）
+ */
+function apiCreateActivity(password, activityName) {
+  if (!Service_Security.verifyAdmin(password)) return { status: 'error', message: '權限不足' };
+  const ssid = Service_DB.getMasterId();
+  if (!ssid) return { status: 'error', message: '系統尚未初始化' };
+  return Service_DB.createActivity(ssid, activityName);
+}
+
+/**
+ * API: 切換當前活動 (Admin Only)
+ * @param {string} password - 管理密碼
+ * @param {string} activityId - 目標活動 ID（傳入 "default" 或空字串可回退至預設）
+ */
+function apiSwitchActivity(password, activityId) {
+  if (!Service_Security.verifyAdmin(password)) return { status: 'error', message: '權限不足' };
+  try {
+    Service_DB.setActiveActivityId(activityId === 'default' ? '' : activityId);
+    return { status: 'success', message: '已切換至活動：' + (activityId === 'default' ? '預設活動' : activityId) };
+  } catch(e) {
+    return { status: 'error', message: e.toString() };
+  }
+}
+

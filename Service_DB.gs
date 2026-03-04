@@ -196,7 +196,9 @@ const Service_DB = (function() {
      * 效能優化：使用 CacheService 快取 60 秒，避免每次 API 呼叫重複讀取 Spreadsheet
      */
     getActivityConfig: function(ssId) {
-       const cacheKey = 'activity_config_' + ssId;
+       const activeId = this.getActiveActivityId();
+       // 以活動 ID 為快取 key，切換活動後自動讀到不同快取
+       const cacheKey = 'activity_config_' + ssId + '_' + (activeId || 'default');
        const cache = CacheService.getScriptCache();
        const cached = cache.get(cacheKey);
        if (cached) {
@@ -204,9 +206,19 @@ const Service_DB = (function() {
        }
 
        const ss = SpreadsheetApp.openById(ssId);
-       // 優先找快照，找不到找一般設定
-       let sheet = ss.getSheetByName(CONFIG.ACT_SETTINGS_SNAPSHOT);
+       let sheet = null;
+
+       // 多活動動態路由：若有活動 ID，讀取 [活動名]-設定 分頁
+       if (activeId) {
+         sheet = ss.getSheetByName(`[${activeId}]-設定`);
+         if (!sheet) {
+           console.warn(`[Service_DB] 找不到活動分頁 [${activeId}]-設定，回退至預設設定`);
+         }
+       }
+       // 若無活動 ID 或找不到活動分頁，使用快照或預設設定（向下相容）
+       if (!sheet) sheet = ss.getSheetByName(CONFIG.ACT_SETTINGS_SNAPSHOT);
        if (!sheet) sheet = ss.getSheetByName(CONFIG.MASTER_SETTINGS_SHEET);
+
        const config = this.readConfig(sheet);
 
        // 寫入快取 (CacheService 最大 100KB，序列化前先確認)
@@ -294,10 +306,12 @@ const Service_DB = (function() {
      */
      getStudentRowData: function(ssid, studentId) {
         const ss = SpreadsheetApp.openById(ssid);
-        const sheet = ss.getSheetByName(CONFIG.DATA_SHEET_NAME);
+        // 使用動態路由，讀取當前活動的學員分頁
+        const sheet = ss.getSheetByName(this.getActiveDataSheetName());
         if (!sheet) return {};
         const lastRow = sheet.getLastRow();
         if (lastRow < 2) return {};
+
         
         const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
         const sidColIndex = headers.indexOf("學號");
@@ -394,7 +408,112 @@ const Service_DB = (function() {
        return md;
     },
 
+
+    // ============================================================
+    // 多活動管理 API
+    // ============================================================
+
+    /**
+     * 取得當前活動 ID（空字串表示使用預設設定）
+     */
+    getActiveActivityId: function() {
+      return _getScriptProp('ACTIVE_ACTIVITY_ID', '');
+    },
+
+    /**
+     * 設定當前活動 ID，並清除舊快取
+     */
+    setActiveActivityId: function(activityId) {
+      _setScriptProp('ACTIVE_ACTIVITY_ID', activityId || '');
+      const masterId = this.getMasterId();
+      if (masterId) {
+        CacheService.getScriptCache().removeAll([
+          'activity_config_' + masterId + '_default',
+          'activity_config_' + masterId + '_' + (activityId || 'default')
+        ]);
+      }
+      console.log('[Service_DB] 已切換活動至: ' + (activityId || '預設活動'));
+    },
+
+    /**
+     * 取得當前活動的學員分頁名稱（支援多活動動態路由）
+     */
+    getActiveDataSheetName: function() {
+      const activeId = this.getActiveActivityId();
+      return activeId ? '[' + activeId + ']-學員' : CONFIG.DATA_SHEET_NAME;
+    },
+
+    /**
+     * 取得當前活動的追蹤分頁名稱（支援多活動動態路由）
+     */
+    getActiveTrackingSheetName: function() {
+      const activeId = this.getActiveActivityId();
+      return activeId ? '[' + activeId + ']-追蹤' : CONFIG.TRACKING_SHEET_NAME;
+    },
+
+    /**
+     * 從活動清單分頁讀取所有活動
+     * @param {string} ssId - 試算表 ID
+     * @returns {Array} - 活動物件陣列 { id, name, status, createdAt, configSheet, dataSheet, isActive }
+     */
+    getActivityList: function(ssId) {
+      const ss = SpreadsheetApp.openById(ssId);
+      const sheet = ss.getSheetByName(CONFIG.ACTIVITIES_OVERVIEW_SHEET);
+      const activeId = this.getActiveActivityId() || 'default';
+      if (!sheet || sheet.getLastRow() < 2) {
+        return [{ id: 'default', name: '預設活動', status: '進行中', createdAt: '', configSheet: CONFIG.MASTER_SETTINGS_SHEET, dataSheet: CONFIG.DATA_SHEET_NAME, isActive: activeId === 'default' }];
+      }
+      const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).getValues();
+      return data
+        .filter(function(r) { return r[0]; })
+        .map(function(r) {
+          return {
+            id: String(r[0]).trim(),
+            name: String(r[1]).trim(),
+            status: String(r[2]).trim(),
+            createdAt: r[3] ? new Date(r[3]).toLocaleDateString() : '',
+            configSheet: String(r[4] || '').trim(),
+            dataSheet: String(r[5] || '').trim(),
+            isActive: String(r[0]).trim() === activeId
+          };
+        });
+    },
+
+    /**
+     * 建立新活動（自動在試算表建立三個分頁並寫入活動清單）
+     * @param {string} ssId - 試算表 ID
+     * @param {string} activityName - 活動名稱（如 "2025春季班"）
+     */
+    createActivity: function(ssId, activityName) {
+      if (!activityName || !activityName.trim()) return { status: 'error', message: '活動名稱不得為空' };
+      const name = activityName.trim();
+      const ss = SpreadsheetApp.openById(ssId);
+      if (ss.getSheetByName('[' + name + ']-設定')) return { status: 'error', message: '活動「' + name + '」已存在' };
+      try {
+        const srcSheet = ss.getSheetByName(CONFIG.MASTER_SETTINGS_SHEET);
+        const configSheet = ss.insertSheet('[' + name + ']-設定');
+        if (srcSheet) {
+          const headers = srcSheet.getRange(1, 1, 1, srcSheet.getLastColumn()).getValues();
+          configSheet.getRange(1, 1, 1, headers[0].length).setValues(headers).setFontWeight('bold');
+          configSheet.setFrozenRows(1);
+        }
+        const dataSheet = ss.insertSheet('[' + name + ']-學員');
+        dataSheet.getRange(1, 1, 1, 2).setValues([['學號', 'Email']]).setFontWeight('bold');
+        dataSheet.setFrozenRows(1);
+        const trackSheet = ss.insertSheet('[' + name + ']-追蹤');
+        trackSheet.getRange(1, 1, 1, 3).setValues([['學號', '完成數', '總分']]).setFontWeight('bold');
+        trackSheet.setFrozenRows(1);
+        const listSheet = ss.getSheetByName(CONFIG.ACTIVITIES_OVERVIEW_SHEET);
+        if (listSheet) listSheet.appendRow([name, name, '進行中', new Date(), '[' + name + ']-設定', '[' + name + ']-學員']);
+        console.log('[Service_DB] 活動「' + name + '」建立成功');
+        return { status: 'success', message: '活動「' + name + '」已建立，請至試算表填入題目後切換為當前活動。', activityId: name };
+      } catch(e) {
+        return { status: 'error', message: '建立活動失敗：' + e.toString() };
+      }
+    },
+
     CONFIG // 導出設定供其他模組參考
   };
+
 
 })();

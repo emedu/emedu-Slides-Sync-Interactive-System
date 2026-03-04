@@ -104,27 +104,26 @@ const Service_Engine = (function() {
         }
       });
 
-      // 批次寫入資料表 (Data Sheet) - 僅呼叫一次
+      // 批次寫入資料表 (Data Sheet) - 使用動態路由，寫到當前活動對應分頁
       if (Object.keys(updates).length > 0) {
         Service_DB.updateStudentData(
           ssId, 
-          Service_DB.CONFIG.DATA_SHEET_NAME,
+          Service_DB.getActiveDataSheetName(),
           studentId, 
           answers['Email'] || null,
           updates
         );
       }
 
-      // 3. 更新進度追蹤表 (Tracking Sheet)
-      // 需計算所有階段完成度
+      // 3. 更新進度追蹤表 (Tracking Sheet) - 動態路由
       const completeInfo = this._calculateTrackingStatus(allQs, answers, studentId, ssId);
       Service_DB.updateTrackingData(
         ssId,
-        Service_DB.CONFIG.TRACKING_SHEET_NAME,
+        Service_DB.getActiveTrackingSheetName(),
         studentId,
-        completeInfo.stageMarks,     // [ "✔", "", "✔" ]
-        completeInfo.completedCount, // 已完成階段數
-        completeInfo.totalAccumulatedScore // 總分
+        completeInfo.stageMarks,
+        completeInfo.completedCount,
+        completeInfo.totalAccumulatedScore
       );
       
       // 4. (Optimization) 呼叫 AI 分析回饋
@@ -158,10 +157,7 @@ const Service_Engine = (function() {
       // 需要取得該生目前在資料表的所有作答紀錄，以判斷歷史階段是否完成
       // 這裡簡化：假設 Service_DB 可以取得該生完整 row data map
       const studentData = Service_DB.getStudentRowData(ssId, studentId);
-    if (!studentData || Object.keys(studentData).length === 0) {
-      throw new Error("查無此學號，請檢查輸入是否正確或聯繫老師。");
-    }
- // { "題目A": "答案", "題目A (提交時間)": Date... }
+      // 注意：currentAnswers 的 key 是 questionText，但 studentData 的 key 可能是 targetColumn
       
       // 合併當前作答 (currentAnswers) 到 studentData (模擬更新後狀態)
       const mergedData = { ...studentData, ...currentAnswers };
@@ -208,7 +204,11 @@ const Service_Engine = (function() {
     getStudentNextTask: function(runId, studentId) {
        const allQs = Service_DB.getActivityConfig(runId);
        // 讀取學員資料：Map<HeaderName, Value>
-       const studentData = Service_DB.getStudentRowData(runId, studentId);
+        // 1. 驗證學員是否存在
+        const studentData = Service_DB.getStudentRowData(runId, studentId);
+        if (!studentData || Object.keys(studentData).length === 0) {
+           throw new Error("查無此學號，請檢查輸入是否正確或聯繫老師。");
+        }
 
        // 依序尋找未作答題目
        // 假設 allQs 已經是正確順序 (readConfig 讀取順序)
