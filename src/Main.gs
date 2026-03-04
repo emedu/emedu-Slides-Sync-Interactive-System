@@ -60,7 +60,7 @@ function setupGeminiApiKeyUI() {
 }
 
 /**
- * 彈出指揮中心對話框 (v10.2.4 - 多層備援版)
+ * 彈出指揮中心對話框 (v10.3.0 - 多層備援版)
  * 優先順序：① ScriptApp.getService().getUrl() → ② 試算表 M2/M3 → ③ 顯示友善提示
  */
 function showControlCenter() {
@@ -178,7 +178,7 @@ function doGet(e) {
 }
 
 /**
- * 渲染安裝精靈 (v10.2.4)
+ * 渲染安裝精靈 (v10.3.0)
  */
 function _renderSetup(e) {
   return HtmlService.createTemplateFromFile('UI_Setup')

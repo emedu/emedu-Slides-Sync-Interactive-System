@@ -13,7 +13,7 @@ const Service_DB = (function() {
 
   // --- 設定常數 (保留 v9.4.2 設定) ---
   const CONFIG = {
-    MASTER_SPREADSHEET_NAME: "emedu-Slides-Sync-Interactive-System - 主控台 v10.2.4",
+    MASTER_SPREADSHEET_NAME: "emedu-Slides-Sync-Interactive-System - 主控台 v10.3.0",
     MASTER_SETTINGS_SHEET: "系統設定",
     ACT_SETTINGS_SNAPSHOT: "系統設定(快照)",
     DATA_SHEET_NAME: "學員資料總表",
