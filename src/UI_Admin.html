@@ -213,8 +213,13 @@
 
     <!-- Manual -->
     <div id="tabManual" class="tab-content">
-        <div class="manual-view" id="manualContent">
-            載入說明文件中...
+        <div style="max-width:860px; margin:0 auto;">
+            <div style="text-align:center; margin-bottom:24px; color:#666; font-size:0.95rem;">
+                📖 系統操作手冊 v10.3.0 — 多活動版
+            </div>
+            <div id="manualContent">
+                <div style="text-align:center; color:#999; padding:40px;">⏳ 載入說明中...</div>
+            </div>
         </div>
     </div>
 
@@ -358,9 +363,42 @@
         });
 
         function loadManual() {
+            const container = document.getElementById('manualContent');
+            container.innerHTML = '<div style="text-align:center; color:#999; padding:40px;">⏳ 載入說明中...</div>';
             google.script.run
                 .withSuccessHandler(res => {
-                    document.getElementById('manualContent').innerHTML = res.content.replace(/\n/g, '<br>');
+                    if (res.status !== 'success' || !res.sections) {
+                        container.innerHTML = '<div style="color:red; padding:20px;">載入失敗：' + (res.message || '格式錯誤') + '</div>';
+                        return;
+                    }
+                    container.innerHTML = '';
+                    res.sections.forEach(sec => {
+                        const card = document.createElement('div');
+                        card.style.cssText = 'background:white; border-radius:16px; box-shadow:0 4px 16px rgba(0,0,0,0.07); margin-bottom:20px; overflow:hidden;';
+
+                        // 標題列
+                        const header = document.createElement('div');
+                        header.style.cssText = `background:${sec.color}; color:white; padding:16px 20px; display:flex; align-items:center; gap:10px; font-weight:700; font-size:1rem;`;
+                        header.innerHTML = `<span style="font-size:1.3rem;">${sec.icon}</span> ${sec.title}`;
+                        card.appendChild(header);
+
+                        // 各條目
+                        const body = document.createElement('div');
+                        body.style.cssText = 'padding:8px 0;';
+                        sec.items.forEach((item, i) => {
+                            const row = document.createElement('div');
+                            row.style.cssText = `display:flex; gap:0; padding:14px 20px; border-bottom:${i < sec.items.length - 1 ? '1px solid #f0f0f0' : 'none'};`;
+                            row.innerHTML = `
+                                <div style="min-width:160px; font-weight:600; color:${sec.color}; font-size:0.88rem; padding-top:2px;">${item.label}</div>
+                                <div style="flex:1; color:#444; font-size:0.9rem; line-height:1.6;">${item.text}</div>`;
+                            body.appendChild(row);
+                        });
+                        card.appendChild(body);
+                        container.appendChild(card);
+                    });
+                })
+                .withFailureHandler(err => {
+                    container.innerHTML = '<div style="color:red; padding:20px;">API 失敗：' + err.message + '</div>';
                 })
                 .apiGetManual(State.password, 'basic');
         }
