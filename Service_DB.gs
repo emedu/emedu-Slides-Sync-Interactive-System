@@ -157,7 +157,13 @@ const Service_DB = (function() {
      */
     addQuestionConfig: function(ssId, questionData) {
        const ss = SpreadsheetApp.openById(ssId);
-       let sheet = ss.getSheetByName(CONFIG.MASTER_SETTINGS_SHEET);
+       
+       // 動態路由：寫入當前活動的設定分頁（若有）
+       const activeId = this.getActiveActivityId();
+       const targetSheetName = activeId ? '[' + activeId + ']-設定' : CONFIG.MASTER_SETTINGS_SHEET;
+       let sheet = ss.getSheetByName(targetSheetName);
+       // 若指定的活動設定分頁不存在，回退至預設
+       if (!sheet) sheet = ss.getSheetByName(CONFIG.MASTER_SETTINGS_SHEET);
        if (!sheet) return { status: 'error', message: '找不到設定表' };
        
        const newRow = [
@@ -236,7 +242,14 @@ const Service_DB = (function() {
      * 清除活動設定快取 (題目異動後應呼叫)
      */
     clearActivityConfigCache: function(ssId) {
-       CacheService.getScriptCache().remove('activity_config_' + ssId);
+       // 新快取 key 格式為 activity_config_{ssId}_{activityId}
+       // 清除時需同時清除預設和當前活動的快取
+       const activeId = this.getActiveActivityId();
+       const keysToRemove = [
+         'activity_config_' + ssId + '_default',
+       ];
+       if (activeId) keysToRemove.push('activity_config_' + ssId + '_' + activeId);
+       CacheService.getScriptCache().removeAll(keysToRemove);
     },
 
     /**

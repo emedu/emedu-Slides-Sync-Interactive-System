@@ -161,7 +161,7 @@ function apiAdminLogin(password) {
     if (ssid) {
       const ss = SpreadsheetApp.openById(ssid);
       try {
-        const dataSheet = ss.getSheetByName(Service_DB.CONFIG.DATA_SHEET_NAME);
+        const dataSheet = ss.getSheetByName(Service_DB.getActiveDataSheetName());
         if (dataSheet) {
            mockStat.totalStudents = Math.max(0, dataSheet.getLastRow() - 1);
            mockStat.dataSheetId = dataSheet.getSheetId();

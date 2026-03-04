@@ -271,6 +271,8 @@
 
                 // 特定 Tab 觸發動態讀取
                 if (tab.dataset.tab === 'tabManual') loadManual();
+                if (tab.dataset.tab === 'tabTools') loadActivities();
+                if (tab.dataset.tab === 'tabCMS') loadStages();
             });
         });
 
