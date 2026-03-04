@@ -1,0 +1,81 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <title>
+        <?= title ?>
+    </title>
+    <?!= HtmlService.createHtmlOutputFromFile('UI_Style').getContent(); ?>
+</head>
+
+<body>
+
+    <div class="header">
+        <h1>
+            <?= activityName ?>
+        </h1>
+        <!-- 進度條區塊 -->
+        <div style="margin-top: 10px; text-align: left; font-size: 0.8rem; opacity: 0.8;">
+            學習進度
+            <div class="progress-container">
+                <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+
+        <!-- 狀態/錯誤訊息 -->
+        <div id="statusMessage" class="message"></div>
+
+        <!-- 登入卡片 -->
+        <div id="loginCard" class="card">
+            <div class="card-title">歡迎回來</div>
+            <p class="text-center text-muted mb-2">請輸入您的學號開始本次學習</p>
+
+            <div class="form-group">
+                <input type="text" id="studentId" placeholder="例如: S123456" />
+            </div>
+            <button id="btnLogin" class="btn">開始學習</button>
+        </div>
+
+        <!-- 互動內容區 (預設隱藏) -->
+        <div id="contentArea" style="display: none;">
+
+            <!-- 問題顯示卡片 -->
+            <div class="card">
+                <div class="card-title" id="questionTitle">載入中...</div>
+                <p id="questionDesc" style="color: #666; font-size: 0.9rem; margin-bottom: 20px;"></p>
+
+                <div id="inputArea">
+                    <!-- 動態生成作答區 -->
+                    <div class="form-group">
+                        <textarea id="answerInput" rows="4" placeholder="請在此輸入您的答案..."></textarea>
+                    </div>
+                </div>
+
+                <button id="btnSubmit" class="btn">提交答案</button>
+            </div>
+
+            <!-- AI 回饋區 (提交後顯示) -->
+            <div id="feedbackCard" class="card" style="display: none; border-left: 4px solid var(--accent-color);">
+                <div class="card-title">AI 學習回饋</div>
+                <div id="feedbackContent">分析中...</div>
+            </div>
+
+        </div>
+
+        <div class="footer">
+            &copy; 2025 伊美：簡報同步互動學習系統 v10.3.0
+        </div>
+
+    </div>
+
+    <!-- 載入前端邏輯 -->
+    <?!= HtmlService.createHtmlOutputFromFile('UI_Action').getContent(); ?>
+
+</body>
+
+</html>

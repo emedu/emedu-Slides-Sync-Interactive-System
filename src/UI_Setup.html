@@ -1,0 +1,304 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <title>系統安裝精靈 - 伊美：簡報同步互動學習系統</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        :root {
+            --primary-color: #1a73e8;
+            --success-color: #34a853;
+            --bg-color: #f8f9fa;
+            --card-bg: #ffffff;
+            --text-main: #202124;
+            --text-sub: #5f6368;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            --gradient: linear-gradient(135deg, #1a73e8 0%, #1557b0 100%);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .setup-container {
+            width: 100%;
+            max-width: 500px;
+            background: var(--card-bg);
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            padding: 40px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .setup-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background: var(--gradient);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .logo {
+            font-size: 2.5rem;
+            margin-bottom: 12px;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            color: var(--text-main);
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            font-size: 0.95rem;
+            color: var(--text-sub);
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-main);
+        }
+
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.2s;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.1);
+        }
+
+        .hint {
+            font-size: 0.8rem;
+            color: var(--text-sub);
+            margin-top: 6px;
+        }
+
+        .btn-install {
+            width: 100%;
+            padding: 16px;
+            background: var(--gradient);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-install:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(26, 115, 232, 0.3);
+        }
+
+        .btn-install:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .status-area {
+            margin-top: 24px;
+            padding: 16px;
+            border-radius: 12px;
+            display: none;
+            font-size: 0.95rem;
+        }
+
+        .status-error {
+            background: #fee7e6;
+            color: #b71c1c;
+        }
+
+        .status-success {
+            background: #e6f4ea;
+            color: #137333;
+        }
+
+        .loader {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .success-links {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .success-links a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="setup-container" id="setupCard">
+        <div class="header">
+            <div class="logo">🚀</div>
+            <h1>系統安裝精靈</h1>
+            <p class="subtitle">歡迎使用伊美系統 v10.3.0<br>請完成最後三步配置即可啟動</p>
+        </div>
+
+        <div id="setupForm">
+            <div class="form-group">
+                <label for="password">🔒 設定管理員密碼</label>
+                <input type="password" id="password" placeholder="請設定 8 字元以上密碼" required>
+                <p class="hint">此密碼用於登入後台，系統會自動雜湊加密存檔。</p>
+            </div>
+
+            <div class="form-group">
+                <label for="apiKey">🧠 配置 Gemini API Key (選填)</label>
+                <input type="text" id="apiKey" placeholder="在此貼入 API Key">
+                <p class="hint">若暫無 API Key，可於安裝後再行設定。</p>
+            </div>
+
+            <button class="btn-install" id="btnInstall" onclick="startSetup()">
+                <span>🚀 啟動我的學習系統</span>
+            </button>
+        </div>
+
+        <div id="statusArea" class="status-area"></div>
+
+        <div id="successArea" style="display:none; text-align:center;">
+            <div style="font-size: 4rem; margin-bottom: 20px;">🏆</div>
+            <h2 style="color:var(--success-color); margin-bottom: 12px;">安裝已完成！</h2>
+            <p style="color:var(--text-sub);">您的主控台試算表已成功建立。</p>
+            <div class="success-links">
+                <a id="ssLink" href="#" target="_blank">進入試算表主控台 →</a>
+                <br><br>
+                <button class="btn-install" onclick="window.location.reload()">
+                    點此回到登入頁
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全域錯誤監控 (解決安裝過程中的空白黑洞問題)
+        window.onerror = function (msg, url, lineNo, columnNo, error) {
+            console.error(msg, url, lineNo);
+            alert("⚠️ 系統安裝發生錯誤，請截圖給開發者：\n" + msg);
+            return false;
+        };
+
+        function startSetup() {
+            try {
+                const password = document.getElementById('password').value;
+                const apiKey = document.getElementById('apiKey').value;
+                const btn = document.getElementById('btnInstall');
+
+                if (password.length < 8) {
+                    showStatus('❌ 密碼長度不足，請輸入至少 8 個字元。', 'error');
+                    return;
+                }
+
+                // UI 狀態切換
+                btn.disabled = true;
+                btn.innerHTML = '<div class="loader"></div> 正在安裝中...';
+                showStatus('🚀 正在配置安全性設定並建立資料庫，這可能需要 10-20 秒，請不要關閉視窗...', '');
+
+                google.script.run
+                    .withSuccessHandler(res => {
+                        try {
+                            if (res && res.status === 'success') {
+                                document.getElementById('setupForm').style.display = 'none';
+                                document.getElementById('statusArea').style.display = 'none';
+                                document.getElementById('successArea').style.display = 'block';
+                                const ssLink = document.getElementById('ssLink');
+                                if (ssLink) ssLink.href = res.spreadsheetUrl;
+                                console.log("Setup success:", res.spreadsheetUrl);
+                            } else {
+                                resetBtn();
+                                showStatus('❌ 安裝失敗：' + (res ? res.message : '未知錯誤'), 'error');
+                            }
+                        } catch (e) {
+                            showStatus('❌ 介面處理錯誤：' + e.message, 'error');
+                        }
+                    })
+                    .withFailureHandler(err => {
+                        resetBtn();
+                        showStatus('⚠️ 伺服器連線中斷或權限不足：' + err.message, 'error');
+                    })
+                    .apiFinalizeSetup({
+                        password: password,
+                        apiKey: apiKey
+                    });
+            } catch (e) {
+                showStatus('❌ 啟動安裝程序失敗：' + e.message, 'error');
+            }
+        }
+
+        function showStatus(msg, type) {
+            const area = document.getElementById('statusArea');
+            if (!area) return;
+            area.style.display = 'block';
+            area.innerHTML = msg;
+            area.className = 'status-area' + (type ? ' status-' + type : '');
+        }
+
+        function resetBtn() {
+            const btn = document.getElementById('btnInstall');
+            if (!btn) return;
+            btn.disabled = false;
+            btn.innerHTML = '<span>🚀 啟動我的學習系統</span>';
+        }
+    </script>
+
+</body>
+
+</html>

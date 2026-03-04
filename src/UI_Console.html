@@ -1,0 +1,234 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <style>
+        :root {
+            --primary: #1a73e8;
+            --secondary: #c5221f;
+            --bg-grad: linear-gradient(135deg, #1e3a8a 0%, #991b1b 100%);
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #374151;
+            background: #f3f4f6;
+        }
+
+        .header {
+            background: var(--bg-grad);
+            color: white;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h2 {
+            margin: 0;
+            font-size: 1.25rem;
+        }
+
+        .header p {
+            margin: 5px 0 0;
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+
+        .url-card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e5e7eb;
+        }
+
+        .label {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .url-box {
+            background: #f9fafb;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #d1d5db;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 0.8rem;
+            margin-bottom: 10px;
+            min-height: 20px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+            font-size: 0.85rem;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1557b0;
+        }
+
+        .btn-outline {
+            background: white;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-outline:hover {
+            background: #f0f7ff;
+        }
+
+        .qr-section {
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .instruction-card {
+            background: #eef2ff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            border: 1px dashed var(--primary);
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        .instruction-card h3 {
+            margin-top: 0;
+            color: var(--primary);
+            font-size: 0.95rem;
+            margin-bottom: 8px;
+        }
+
+        .instruction-card ul {
+            margin: 0;
+            padding-left: 20px;
+            color: #4b5563;
+        }
+
+        .status-bar {
+            font-size: 0.75rem;
+            color: #6b7280;
+            text-align: center;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h2>🚀 伊美系統控制台</h2>
+        <p>System v10.3.0 - 智慧導覽中心</p>
+    </div>
+
+    <div class="url-card">
+        <span class="label">學員作答入口 (前台)</span>
+        <div id="portal-url" class="url-box">
+            <?= portalUrl ?>
+        </div>
+        <div class="btn-group">
+            <button class="btn-primary" onclick="copy('portal-url')">📋 點擊複製</button>
+            <a href="<?= portalUrl ?>" target="_blank" class="btn-outline"
+                style="display:flex;align-items:center;justify-content:center;text-decoration:none;">🌐 開啟網頁</a>
+        </div>
+    </div>
+
+    <div class="url-card">
+        <span class="label">管理中心 (後台)</span>
+        <div id="admin-url" class="url-box">
+            <?= adminUrl ?>
+        </div>
+        <div class="btn-group">
+            <button class="btn-primary" onclick="copy('admin-url')">📋 點擊複製</button>
+            <a href="<?= adminUrl ?>" target="_blank" class="btn-outline"
+                style="display:flex;align-items:center;justify-content:center;text-decoration:none;">⚙️ 進入後台</a>
+        </div>
+    </div>
+
+    <div class="qr-section">
+        <span class="label">掃描 QR Code 快速測試 (前台)</span>
+        <? var qrUrl = "https://chart.googleapis.com/chart?chs=150x150&cht=qr&chl=" + encodeURIComponent(portalUrl); ?>
+        <? if (status === "online") { ?>
+        <img src="<?= qrUrl ?>" alt="QR Code"
+            style="width:150px; height:150px; border:1px solid #ddd; padding:5px; border-radius:8px;">
+        <? } else { ?>
+        <p style="color:#d32f2f; font-size: 0.85em;">⚠️ 部署後 QR Code 將自動顯示</p>
+        <? } ?>
+    </div>
+
+    <div class="instruction-card">
+        <h3>💡 系統操作三步曲</h3>
+        <ul>
+            <li><strong>給學員</strong>：將上面「學員作答入口」的網址貼在您的簡報上，讓學生掃描加入。</li>
+            <li><strong>給講師</strong>：點擊「進入後台」，您可以在裡面監看答題統計、新增題目。</li>
+            <li><strong>神同步</strong>：在後台點選「切換指定階段」，所有學生手機就會<strong>同步跳轉</strong>！</li>
+        </ul>
+    </div>
+
+    <div class="status-bar">
+        系統偵測狀態: [
+        <? if (status === "online") { ?>🟢 雲端已連線
+        <? } else { ?>🔴 尚未部署
+        <? } ?>] | 版本: v10.3.0
+    </div>
+
+    <script>
+        // 靜態網址已由後端注入，JS 僅做簡單的按鈕動作
+        var PORTAL = <?= JSON.stringify(portalUrl) ?>;
+        var ADMIN = <?= JSON.stringify(adminUrl) ?>;
+
+        function copy(id) {
+            var text = document.getElementById(id).innerText;
+            var temp = document.createElement('textarea');
+            temp.value = text;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+            alert('網址已複製到剪貼簿！');
+        }
+
+        function openPortal() {
+            if (PORTAL.indexOf('http') > -1) {
+                google.script.host.openUrl(PORTAL);
+            } else {
+                alert('系統尚未部署，請先執行「部署 -> 新建部署」');
+            }
+        }
+
+        function openAdmin() {
+            if (ADMIN.indexOf('http') > -1) {
+                google.script.host.openUrl(ADMIN);
+            } else {
+                alert('系統尚未部署，請先執行「部署 -> 新建部署」');
+            }
+        }
+    </script>
+</body>
+
+</html>

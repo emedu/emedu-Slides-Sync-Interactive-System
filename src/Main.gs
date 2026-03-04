@@ -1,5 +1,5 @@
 ﻿/**
- * Main.gs - 伊美系統 v10.2.4 入口與控制器
+ * Main.gs - 伊美系統 v10.3.0 入口與控制器
  * 
  * 職責：
  * 1. 處理 Web App 請求 (doGet)
@@ -205,13 +205,13 @@ function _renderAdmin(e) {
 function _renderPortal(e) {
   // 註：安全性與權限檢查已整合於 Service_Security 與 Service_Engine 中。
   const template = HtmlService.createTemplateFromFile('UI_Portal');
-  template.title = '伊美：簡報同步互動學習系統 v10.2.4 (Setup Wizard)';
+  template.title = '伊美：簡報同步互動學習系統 v10.3.0 (Multi-Activity)';
   
   // 固定顯示正確版號，防止試算表名稱過舊導致誤導
-  template.activityName = 'emedu-Slides-Sync-Interactive-System - v10.2.4';
+  template.activityName = 'emedu-Slides-Sync-Interactive-System - v10.3.0';
   
   return template.evaluate()
-      .setTitle('伊美：簡報同步互動學習系統 v10.2.4')
+      .setTitle('伊美：簡報同步互動學習系統 v10.3.0')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
