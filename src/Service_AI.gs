@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Service_AI.gs - Gemini AI 整合模組 v10.3.7
  * 
  * 職責：
@@ -11,7 +11,7 @@
 const Service_AI = (function() {
   
   const API_KEY_PROP = 'GEMINI_API_KEY';
-  const MODEL_NAME = 'gemini-1.5-flash'; // 使用較快速且經濟的模型
+  const MODEL_NAME = 'gemini-1.5-flash-latest'; // 採用最新支援的 alias 避免 API 版本不相容問題
 
   return {
     
@@ -71,7 +71,7 @@ const Service_AI = (function() {
 
         if (json.error) {
           console.error("Gemini API Error:", json.error);
-          return { feedback: "無法取得 AI 建議 (API Error)", suggestions: [] };
+          return { feedback: "API 發生錯誤: " + (json.error.message || JSON.stringify(json.error)), suggestions: [] };
         }
 
         const responseText = json.candidates?.[0]?.content?.parts?.[0]?.text;
