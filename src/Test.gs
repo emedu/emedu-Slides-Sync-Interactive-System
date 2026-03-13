@@ -7,7 +7,7 @@
  */
 
 function runAllTests() {
-  console.log("🚀 開始執行伊美系統 v10.3.0 (Setup Wizard) 測試...");
+  console.log("🚀 開始執行伊美系統 v10.3.7 (Setup Wizard) 測試...");
   
   let passed = 0;
   let failed = 0;

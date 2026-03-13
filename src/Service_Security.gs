@@ -6,7 +6,7 @@
  * 2. 身份驗證 (Identity Verification)
  * 
  * 遷移自 v9.4.2: withSubmitGuard_
- * v10.3.0 安全更新：全面導入網頁安裝精靈，移除代碼層級之密碼初始化
+ * v10.3.7 安全更新：全面導入網頁安裝精靈，移除代碼層級之密碼初始化
  */
 
 const Service_Security = (function() {

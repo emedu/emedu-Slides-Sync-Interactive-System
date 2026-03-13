@@ -1,5 +1,5 @@
 ﻿/**
- * Service_AI.gs - Gemini AI 整合模組 v10.3.0
+ * Service_AI.gs - Gemini AI 整合模組 v10.3.7
  * 
  * 職責：
  * 1. 介接 Gemini API

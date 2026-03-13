@@ -1,5 +1,5 @@
 ﻿/**
- * Service_DB.gs - 資料庫抽象層 v10.3.0 (多活動版)
+ * Service_DB.gs - 資料庫抽象層 v10.3.7 (多活動版)
  * 
  * 職責：
  * 1. 封裝 SpreadsheetApp 操作
@@ -13,7 +13,7 @@ const Service_DB = (function() {
 
   // --- 設定常數 (保留 v9.4.2 設定) ---
   const CONFIG = {
-    MASTER_SPREADSHEET_NAME: "emedu-Slides-Sync-Interactive-System - 主控台 v10.3.0",
+    MASTER_SPREADSHEET_NAME: "emedu-Slides-Sync-Interactive-System - 主控台 v10.3.7",
     MASTER_SETTINGS_SHEET: "系統設定",
     ACT_SETTINGS_SNAPSHOT: "系統設定(快照)",
     DATA_SHEET_NAME: "學員資料總表",
@@ -38,7 +38,7 @@ const Service_DB = (function() {
   return {
     
     /**
-     * 安裝主控台 (v10.3.0 優化：支援綁定型腳本)
+     * 安裝主控台 (v10.3.7 優化：支援綁定型腳本)
      */
     installControlSheet: function() {
       let ss;
@@ -273,7 +273,7 @@ const Service_DB = (function() {
     },
 
     // =============================================
-    // 多活動管理 API (v10.3.0 新增)
+    // 多活動管理 API (v10.3.7 新增)
     // =============================================
 
     /**

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 
 <head>
@@ -44,7 +44,6 @@
         <!-- 互動內容區 (預設隱藏) -->
         <div id="contentArea" style="display: none;">
 
-            <!-- 問題顯示卡片 -->
             <div class="card">
                 <div class="card-title" id="questionTitle">載入中...</div>
                 <p id="questionDesc" style="color: #666; font-size: 0.9rem; margin-bottom: 20px;"></p>
@@ -56,7 +55,11 @@
                     </div>
                 </div>
 
-                <button id="btnSubmit" class="btn">提交答案</button>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+                    <button id="btnPrev" class="btn" style="background-color: #6c757d; display: none;">上一題</button>
+                    <button id="btnSubmit" class="btn" style="flex-grow: 1; margin: 0 10px;">提交答案</button>
+                    <button id="btnNext" class="btn" style="background-color: #28a745; display: none;">下一題</button>
+                </div>
             </div>
 
             <!-- AI 回饋區 (提交後顯示) -->
@@ -68,7 +71,7 @@
         </div>
 
         <div class="footer">
-            &copy; 2025 伊美：簡報同步互動學習系統 v10.3.0
+            &copy; 2025 伊美：簡報同步互動學習系統 v10.3.7
         </div>
 
     </div>

@@ -1,5 +1,5 @@
-﻿/**
- * Main.gs - 伊美系統 v10.3.0 入口與控制器
+/**
+ * Main.gs - 伊美系統 v10.3.7 入口與控制器
  * 
  * 職責：
  * 1. 處理 Web App 請求 (doGet)
@@ -60,60 +60,65 @@ function setupGeminiApiKeyUI() {
 }
 
 /**
- * 彈出指揮中心對話框 (v10.3.0 - 多層備援版)
- * 優先順序：① ScriptApp.getService().getUrl() → ② 試算表 M2/M3 → ③ 顯示友善提示
+ * 彈出指揮中心對話框 (v10.3.7 升級版)
+ * 優先順序重新調整：① 試算表 M2/M3 (尊重使用者設定) → ② 自動抓取並轉換 /dev 為 /exec
  */
 function showControlCenter() {
   var portalUrl = "";
   var adminUrl  = "";
   var status    = "offline";
 
-  // 第一層：嘗試直接取得部署 URL
+  // 第一層：優先從試算表讀取 (唯一真理)
   try {
-    var serviceUrl = ScriptApp.getService().getUrl();
-    if (serviceUrl && serviceUrl.indexOf('http') > -1) {
-      portalUrl = serviceUrl;
-      adminUrl  = serviceUrl + (serviceUrl.indexOf('?') > -1 ? '&page=admin' : '?page=admin');
-      status    = "online";
-
-      // 成功取得後順便寫入試算表快取
-      try {
-        var ss = SpreadsheetApp.getActiveSpreadsheet();
-        var cfg = ss.getSheetByName("系統設定");
-        if (cfg) {
-          cfg.getRange("M2").setValue(portalUrl);
-          cfg.getRange("M3").setValue(adminUrl);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var cfg = ss.getSheetByName("系統設定");
+    if (cfg) {
+      var m2 = cfg.getRange("M2").getValue();
+      var m3 = cfg.getRange("M3").getValue();
+      if (m2 && String(m2).indexOf('http') > -1) {
+        portalUrl = String(m2).trim();
+        // 如果手動亂填填到 dev，幫他轉成 exec
+        if (portalUrl.indexOf('/dev') > -1) {
+          portalUrl = portalUrl.replace('/dev', '/exec');
+          cfg.getRange("M2").setValue(portalUrl); // 順手修復
         }
-      } catch(e2) { /* 快取寫入失敗不影響主流程 */ }
+        adminUrl  = m3 ? String(m3).trim() : (portalUrl + (portalUrl.indexOf('?') > -1 ? '&page=admin' : '?page=admin'));
+        status    = "online";
+      }
     }
   } catch(e) {
-    console.warn("getUrl 失敗: " + e.message);
+    console.warn("讀取 M2/M3 失敗: " + e.message);
   }
 
-  // 第二層備援：若取不到，改讀試算表 M2/M3
-  if (!portalUrl || portalUrl.indexOf('http') === -1) {
+  // 第二層：如果試算表沒設定或是設定錯誤
+  if (!portalUrl) {
     try {
-      var ss2 = SpreadsheetApp.getActiveSpreadsheet();
-      var cfg2 = ss2.getSheetByName("系統設定");
-      if (cfg2) {
-        var m2 = cfg2.getRange("M2").getValue();
-        var m3 = cfg2.getRange("M3").getValue();
-        if (m2 && String(m2).indexOf('http') > -1) {
-          portalUrl = m2;
-          adminUrl  = m3 || (m2 + (m2.indexOf('?') > -1 ? '&page=admin' : '?page=admin'));
-          status    = "online";
-          console.log("控制台：已從試算表 M2/M3 讀取備用網址");
-        }
+      var serviceUrl = ScriptApp.getService().getUrl();
+      if (serviceUrl && serviceUrl.indexOf('http') > -1) {
+        // [核心修復] 將 /dev 網址轉換為 /exec 正式網址
+        portalUrl = serviceUrl.replace('/dev', '/exec');
+        adminUrl  = portalUrl + (portalUrl.indexOf('?') > -1 ? '&page=admin' : '?page=admin');
+        status    = "online";
+        
+        // 成功抓取且轉換後，寫入試算表快取，達成全自動化
+        try {
+          var ss2 = SpreadsheetApp.getActiveSpreadsheet();
+          var cfg2 = ss2.getSheetByName("系統設定");
+          if (cfg2) {
+            cfg2.getRange("M2").setValue(portalUrl);
+            cfg2.getRange("M3").setValue(adminUrl);
+          }
+        } catch(e2) { /* 忽略 */ }
       }
-    } catch(e3) {
-      console.warn("備用讀取 M2/M3 失敗: " + e3.message);
+    } catch(e) {
+      console.warn("getUrl 失敗: " + e.message);
     }
   }
 
-  // 第三層：若兩層都失敗，顯示友善提示
-  if (!portalUrl || portalUrl.indexOf('http') === -1) {
-    portalUrl = "⚠️ 尚未部署 — 請至「系統設定」分頁的 M2 儲存格填入 Web App 網址，\n或在 GAS 編輯器執行「部署 → 新建部署」。";
-    adminUrl  = "⚠️ 尚未部署";
+  // 第三層：若都失敗，顯示友善提示
+  if (!portalUrl) {
+    portalUrl = "⚠️ 尚未設定正式網址 — 請至「部署 -> 管理部署」複製網址，貼上到系統設定分頁 M2。";
+    adminUrl  = "⚠️ 尚未設定正式網址";
     status    = "offline";
   }
 
@@ -132,13 +137,39 @@ function showControlCenter() {
  * 快速跳转至後台 (輔助函式)
  */
 function directToAdmin() {
-  const url = ScriptApp.getService().getUrl();
+  var url = "";
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var cfg = ss.getSheetByName("系統設定");
+    if (cfg) {
+      var m3 = cfg.getRange("M3").getValue();
+      if (m3 && String(m3).indexOf('http') > -1) {
+        url = String(m3).trim();
+        // 對於 /dev 網址的防呆修復
+        if (url.indexOf('/dev') > -1) {
+          url = url.replace('/dev', '/exec');
+          cfg.getRange("M3").setValue(url);
+        }
+      }
+    }
+  } catch(e) {}
+
   if (!url) {
-    SpreadsheetApp.getUi().alert("系統尚未部署，請先執行「部署 -> 新建部署」");
-    return;
+    try {
+      const serviceUrl = ScriptApp.getService().getUrl();
+      if (serviceUrl) {
+        url = serviceUrl.replace('/dev', '/exec');
+        url = url + (url.indexOf('?') > -1 ? '&page=admin' : '?page=admin');
+      }
+    } catch(e) {}
+    
+    if (!url) {
+      SpreadsheetApp.getUi().alert("系統尚未設定網址，請先至「部署 -> 管理部署」複製正式網址，貼到「系統設定」M2 儲存格");
+      return;
+    }
   }
-  const adminUrl = url + (url.indexOf('?') > -1 ? '&page=admin' : '?page=admin');
-  const html = `<script>window.open("${adminUrl}", "_blank"); google.script.host.close();</script>正在轉向管理中心...`;
+
+  const html = `<script>window.open("${url}", "_blank"); google.script.host.close();</script>正在轉向管理中心...`;
   SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(300).setHeight(100), ' ');
 }
 
@@ -178,7 +209,7 @@ function doGet(e) {
 }
 
 /**
- * 渲染安裝精靈 (v10.3.0)
+ * 渲染安裝精靈 (v10.3.7)
  */
 function _renderSetup(e) {
   return HtmlService.createTemplateFromFile('UI_Setup')
@@ -205,13 +236,13 @@ function _renderAdmin(e) {
 function _renderPortal(e) {
   // 註：安全性與權限檢查已整合於 Service_Security 與 Service_Engine 中。
   const template = HtmlService.createTemplateFromFile('UI_Portal');
-  template.title = '伊美：簡報同步互動學習系統 v10.3.0 (Multi-Activity)';
+  template.title = '伊美：簡報同步互動學習系統 v10.3.7 (Multi-Activity)';
   
   // 固定顯示正確版號，防止試算表名稱過舊導致誤導
-  template.activityName = 'emedu-Slides-Sync-Interactive-System - v10.3.0';
+  template.activityName = 'emedu-Slides-Sync-Interactive-System - v10.3.7';
   
   return template.evaluate()
-      .setTitle('伊美：簡報同步互動學習系統 v10.3.0')
+      .setTitle('伊美：簡報同步互動學習系統 v10.3.7')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
@@ -283,6 +314,104 @@ function setupSystem() {
 }
 
 /**
+ * 🌐 [手動執行] 偵測並同步系統網址 (v10.3.7 自動轉換修復版)
+ * 
+ * 邏輯：
+ * 1. 優先讀取試算表 M2/M3 (如果使用者已經手動貼上，絕對不覆蓋)
+ * 2. 如果試算表是空的，嘗試自動抓取，若抓到 /dev 網址，自動轉換為 /exec 正式網址
+ */
+function getSystemUrls() {
+  console.log("══════════════════════════════════════");
+  console.log("🔍 伊美系統 v10.3.7 — 網址偵測與同步");
+  console.log("══════════════════════════════════════\n");
+
+  var webAppUrl = "";
+  var adminUrl  = "";
+  var masterId  = Service_DB.getMasterId();
+  var isFromSpreadsheet = false;
+
+  // --- 第 1 步：優先讀取試算表 (尊重使用者手動貼上的網址) ---
+  if (masterId) {
+    try {
+      var ss = SpreadsheetApp.openById(masterId);
+      var cfg = ss.getSheetByName("系統設定");
+      if (cfg) {
+        var m2 = cfg.getRange("M2").getValue();
+        var m3 = cfg.getRange("M3").getValue();
+        if (m2 && String(m2).indexOf("http") > -1) {
+          webAppUrl = String(m2).trim();
+          if (webAppUrl.indexOf('/dev') > -1) {
+             console.log("ℹ️ 偵測到 /dev 開發者網址，系統將自動修復為 /exec 正式網址");
+             webAppUrl = webAppUrl.replace('/dev', '/exec');
+          }
+          adminUrl  = m3 ? String(m3).trim() : (webAppUrl + "?page=admin");
+          if (adminUrl.indexOf('/dev') > -1) adminUrl = adminUrl.replace('/dev', '/exec');
+          
+          isFromSpreadsheet = true;
+          console.log("ℹ️ 已讀取試算表內設定的自訂網址");
+        }
+      }
+    } catch(e) { }
+  }
+
+  // --- 第 2 步：如果試算表是空的，才自動抓取 ---
+  if (!webAppUrl) {
+    try {
+      var serviceUrl = ScriptApp.getService().getUrl();
+      if (serviceUrl && serviceUrl.indexOf("http") > -1) {
+        webAppUrl = serviceUrl.replace('/dev', '/exec');
+        adminUrl  = webAppUrl + "?page=admin";
+        console.log("ℹ️ 已從系統部署自動偵測網址，並已轉換為正式版");
+      }
+    } catch(e) { }
+  }
+
+  // --- 第 3 步：印出結果 ---
+  if (webAppUrl && webAppUrl.indexOf("http") > -1) {
+    console.log("📱 學員入口 (前台)：");
+    console.log("   " + webAppUrl);
+    console.log("");
+    console.log("⚙️ 管理中心 (後台)：");
+    console.log("   " + adminUrl);
+  } else {
+    console.log("⚠️ 尚未偵測到正式 Web App 網址。");
+    console.log("   請先完成以下步驟：");
+    console.log("   1. 點擊編輯器右上角 [部署] → [管理部署]");
+    console.log("   2. 複製結尾為 /exec 的網址");
+    console.log("   3. 將得到的網址貼入試算表 M2 儲存格！");
+  }
+
+  console.log("");
+
+  // --- 第 4 步：印出試算表網址 ---
+  if (masterId) {
+    console.log("📊 控制主控台 (試算表)：");
+    console.log("   https://docs.google.com/spreadsheets/d/" + masterId);
+  }
+
+  // --- 第 5 步：自動回填 (如果原本有錯或為空，覆寫/回填) ---
+  if (webAppUrl && masterId) {
+    try {
+      var ss2 = SpreadsheetApp.openById(masterId);
+      var cfg2 = ss2.getSheetByName("系統設定");
+      if (cfg2) {
+        cfg2.getRange("M2").setValue(webAppUrl);
+        cfg2.getRange("M3").setValue(adminUrl);
+        if (!isFromSpreadsheet) {
+           console.log("\n📝 已將偵測到的正式網址自動填入試算表 M2/M3 儲存格！");
+        }
+      }
+    } catch(e) {
+      console.log("\n⚠️ 自動填入試算表失敗: " + e.message);
+    }
+  }
+
+  console.log("\n══════════════════════════════════════");
+  console.log("✅ 執行完畢。未來如有變動，修改試算表 M2/M3 即可生效。");
+  console.log("══════════════════════════════════════");
+}
+
+/**
  * 🔧 [修復工具] 強制將 MASTER_ID 指向當前綁定試算表
  * 
  * 使用時機：後台「開啟主控台」連結到錯誤試算表時，
@@ -336,7 +465,7 @@ function apiLogin(studentId) {
     console.log(`[API] Master ID: ${ssid}`);
     if (!ssid) throw new Error("系統主控台尚未安裝，請聯絡系統管理員。");
     
-    // 直接呼叫引擎取得下一題
+    // 直接呼叫引擎取得下一題的階段資訊
     const nextTaskResult = Service_Engine.getStudentNextTask(ssid, studentId);
     console.log(`[API] 下一步任務結果: ${JSON.stringify(nextTaskResult)}`);
     
@@ -348,26 +477,27 @@ function apiLogin(studentId) {
        };
     }
     
-    // 獲取所有題目以計算進度 (stats)
-    const allQs = Service_DB.getActivityConfig(ssid);
     const q = nextTaskResult.question;
-
     if (!q) {
       throw new Error("尚未設定題目");
     }
+
+    // [Multi-Activity] 取得該階段所有的題目
+    const stageTasks = Service_Engine.getStudentStageTasks(ssid, studentId, q.label);
+    const allQs = Service_DB.getActivityConfig(ssid);
     
+    // 計算初始索引 (找第一題還沒做的)
+    let initialIndex = stageTasks.findIndex(t => !t.isDone);
+    if (initialIndex === -1) initialIndex = 0; // 若全做完，停在第一題
+
     const result = {
       status: 'success',
       datestamp: new Date().toISOString(),
-      task: {
-        stage: q.label,
-        question: q.question,
-        type: q.type,
-        desc: q.helpText || "(無提示)"
-      },
+      tasks: stageTasks,
+      currentIndex: initialIndex,
       stats: {
         totalQuestions: allQs.length,
-        currentOrder: allQs.findIndex(item => item.question === q.question) + 1
+        currentOrder: allQs.findIndex(item => item.question === stageTasks[0].question) + 1
       }
     };
     
@@ -485,7 +615,7 @@ function apiGetStages(password) {
 }
 
 // =============================================
-// 多活動管理 API (v10.3.0)
+// 多活動管理 API (v10.3.7)
 // =============================================
 
 /**
@@ -574,7 +704,7 @@ function apiGetSystemStatus(password) {
     data: {
       spreadsheetId: masterId,
       hasApiKey: !!apiKey,
-      version: 'v10.3.0',
+      version: 'v10.3.7',
       timezone: Session.getScriptTimeZone(),
       user: Session.getActiveUser().getEmail()
     }
@@ -600,7 +730,7 @@ function apiGetManual(password, manualId) {
   const sections = [
     {
       icon: '🎯',
-      title: '多活動管理（v10.3.0 新功能）',
+      title: '多活動管理（v10.3.7 新功能）',
       color: '#1a2a6c',
       items: [
         { label: '什麼是「活動」', text: '一個活動就是一門課程。系統可同時管理多個課程，各課程有獨立的題目與學員資料。' },
@@ -649,7 +779,7 @@ function apiGetManual(password, manualId) {
 }
 
 /**
- * API: 自動偵測應用程式網址 (極簡穩定版 v10.3.0)
+ * API: 自動偵測應用程式網址 (極簡穩定版 v10.3.7)
  * 解決原因：ScriptApp.getService().getUrl() 可能在未完全授權環境下導致執行掛起
  */
 function apiGetAppUrls() {
@@ -659,8 +789,11 @@ function apiGetAppUrls() {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheet = ss.getSheetByName("系統設定");
     if (sheet) {
-      result.portal = sheet.getRange("M2").getValue() || "";
-      result.admin = sheet.getRange("M3").getValue() || "";
+      const m2 = sheet.getRange("M2").getValue() || "";
+      if (m2) {
+         result.portal = String(m2).replace('/dev', '/exec');
+         result.admin = sheet.getRange("M3").getValue() ? String(sheet.getRange("M3").getValue()).replace('/dev', '/exec') : (result.portal + "?page=admin");
+      }
     }
   } catch(e) {
     result.error = "ReadSheetError: " + e.toString();
@@ -670,9 +803,9 @@ function apiGetAppUrls() {
   if (!result.portal || String(result.portal).indexOf('http') === -1) {
     try {
       var serviceUrl = ScriptApp.getService().getUrl();
-      if (serviceUrl) {
-        result.portal = serviceUrl;
-        result.admin = serviceUrl + (serviceUrl.indexOf('?') > -1 ? '&page=admin' : '?page=admin');
+      if (serviceUrl) { 
+        result.portal = serviceUrl.replace('/dev', '/exec'); // 自動修復
+        result.admin = result.portal + (result.portal.indexOf('?') > -1 ? '&page=admin' : '?page=admin');
       }
     } catch(e) {
        result.apiError = e.toString();
@@ -681,8 +814,8 @@ function apiGetAppUrls() {
 
   // 整理最終文字
   if (!result.portal || String(result.portal).indexOf('http') === -1) {
-    result.portal = "尚未部屬 (請點擊右邊「部署」按鈕)";
-    result.admin = "尚未部屬";
+    result.portal = "尚未設定正式網址 (請參照使用手冊部署新版本)";
+    result.admin = "尚未設定正式網址";
     result.status = "offline";
   } else {
     result.status = "online";
