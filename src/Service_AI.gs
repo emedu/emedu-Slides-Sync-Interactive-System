@@ -11,7 +11,7 @@
 const Service_AI = (function() {
   
   const API_KEY_PROP = 'GEMINI_API_KEY';
-  const MODEL_NAME = 'gemini-1.5-flash-latest'; // 採用最新支援的 alias 避免 API 版本不相容問題
+  const MODEL_NAME = 'gemini-2.0-flash'; // 採用最新支援的 2.0-flash 模型，解決 1.5 版本找不到的問題
 
   return {
     
@@ -97,7 +97,7 @@ const Service_AI = (function() {
 
       } catch (e) {
         console.error("AI Service Exception:", e);
-        return { feedback: "連線發生錯誤，請稍後再試", suggestions: [] };
+        return { feedback: "連線發生錯誤，請稍後再試: " + e.toString(), suggestions: [] };
       }
     },
     
