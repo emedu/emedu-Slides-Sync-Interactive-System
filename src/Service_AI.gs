@@ -11,7 +11,7 @@
 const Service_AI = (function() {
   
   const API_KEY_PROP = 'GEMINI_API_KEY';
-  const MODEL_NAME = 'gemini-2.0-flash'; // 採用最新支援的 2.0-flash 模型，解決 1.5 版本找不到的問題
+  const MODEL_NAME = 'gemini-3-flash-preview'; // 採用 2026 年最新公佈的 Gemini 3 系列模型
 
   return {
     
