@@ -29,7 +29,7 @@ function onOpen() {
 function setupAdminPasswordUI() {
   const ui = SpreadsheetApp.getUi();
   const response = ui.prompt('🔒 系統安全性設定', '請輸入新的管理員密碼（至少 8 字元）：\n(此設定會加密儲存，系統不會保留明文)', ui.ButtonSet.OK_CANCEL);
-  
+
   if (response.getSelectedButton() == ui.Button.OK) {
     const pwd = response.getResponseText();
     try {
@@ -47,7 +47,7 @@ function setupAdminPasswordUI() {
 function setupGeminiApiKeyUI() {
   const ui = SpreadsheetApp.getUi();
   const response = ui.prompt('🧠 AI 大腦連線設定', '請貼入您的 Gemini API Key：', ui.ButtonSet.OK_CANCEL);
-  
+
   if (response.getSelectedButton() == ui.Button.OK) {
     const key = response.getResponseText();
     if (key && key.trim().length > 10) {
@@ -65,8 +65,8 @@ function setupGeminiApiKeyUI() {
  */
 function showControlCenter() {
   var portalUrl = "";
-  var adminUrl  = "";
-  var status    = "offline";
+  var adminUrl = "";
+  var status = "offline";
 
   // 第一層：優先從試算表讀取 (唯一真理)
   try {
@@ -82,11 +82,11 @@ function showControlCenter() {
           portalUrl = portalUrl.replace('/dev', '/exec');
           cfg.getRange("M2").setValue(portalUrl); // 順手修復
         }
-        adminUrl  = m3 ? String(m3).trim() : (portalUrl + (portalUrl.indexOf('?') > -1 ? '&page=admin' : '?page=admin'));
-        status    = "online";
+        adminUrl = m3 ? String(m3).trim() : (portalUrl + (portalUrl.indexOf('?') > -1 ? '&page=admin' : '?page=admin'));
+        status = "online";
       }
     }
-  } catch(e) {
+  } catch (e) {
     console.warn("讀取 M2/M3 失敗: " + e.message);
   }
 
@@ -97,9 +97,9 @@ function showControlCenter() {
       if (serviceUrl && serviceUrl.indexOf('http') > -1) {
         // [核心修復] 將 /dev 網址轉換為 /exec 正式網址
         portalUrl = serviceUrl.replace('/dev', '/exec');
-        adminUrl  = portalUrl + (portalUrl.indexOf('?') > -1 ? '&page=admin' : '?page=admin');
-        status    = "online";
-        
+        adminUrl = portalUrl + (portalUrl.indexOf('?') > -1 ? '&page=admin' : '?page=admin');
+        status = "online";
+
         // 成功抓取且轉換後，寫入試算表快取，達成全自動化
         try {
           var ss2 = SpreadsheetApp.getActiveSpreadsheet();
@@ -108,9 +108,9 @@ function showControlCenter() {
             cfg2.getRange("M2").setValue(portalUrl);
             cfg2.getRange("M3").setValue(adminUrl);
           }
-        } catch(e2) { /* 忽略 */ }
+        } catch (e2) { /* 忽略 */ }
       }
-    } catch(e) {
+    } catch (e) {
       console.warn("getUrl 失敗: " + e.message);
     }
   }
@@ -118,14 +118,14 @@ function showControlCenter() {
   // 第三層：若都失敗，顯示友善提示
   if (!portalUrl) {
     portalUrl = "⚠️ 尚未設定正式網址 — 請至「部署 -> 管理部署」複製網址，貼上到系統設定分頁 M2。";
-    adminUrl  = "⚠️ 尚未設定正式網址";
-    status    = "offline";
+    adminUrl = "⚠️ 尚未設定正式網址";
+    status = "offline";
   }
 
   var tpl = HtmlService.createTemplateFromFile('UI_Console');
   tpl.portalUrl = portalUrl;
-  tpl.adminUrl  = adminUrl;
-  tpl.status    = status;
+  tpl.adminUrl = adminUrl;
+  tpl.status = status;
 
   SpreadsheetApp.getUi().showModalDialog(
     tpl.evaluate().setWidth(420).setHeight(620).setTitle('伊美系統：智慧管理控制台'),
@@ -152,7 +152,7 @@ function directToAdmin() {
         }
       }
     }
-  } catch(e) {}
+  } catch (e) { }
 
   if (!url) {
     try {
@@ -161,8 +161,8 @@ function directToAdmin() {
         url = serviceUrl.replace('/dev', '/exec');
         url = url + (url.indexOf('?') > -1 ? '&page=admin' : '?page=admin');
       }
-    } catch(e) {}
-    
+    } catch (e) { }
+
     if (!url) {
       SpreadsheetApp.getUi().alert("系統尚未設定網址，請先至「部署 -> 管理部署」複製正式網址，貼到「系統設定」M2 儲存格");
       return;
@@ -188,7 +188,7 @@ function doGet(e) {
   // --- 關鍵優化：自動偵測初始化狀態 ---
   const masterId = PropertiesService.getScriptProperties().getProperty('MASTER_ID');
   const pwdHash = PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD_HASH');
-  
+
   if (!masterId || !pwdHash) {
     if (route === 'setup') {
       return _renderSetup(e);
@@ -196,7 +196,7 @@ function doGet(e) {
     // 強制進入安裝精靈，除非已經在安裝頁
     return _renderSetup(e);
   }
-  
+
   if (route === 'portal') {
     return _renderPortal(e);
   } else if (route === 'admin') {
@@ -213,10 +213,10 @@ function doGet(e) {
  */
 function _renderSetup(e) {
   return HtmlService.createTemplateFromFile('UI_Setup')
-      .evaluate()
-      .setTitle('系統安裝精靈 - 伊美：簡報同步互動學習系統')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    .evaluate()
+    .setTitle('系統安裝精靈 - 伊美：簡報同步互動學習系統')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 /**
@@ -224,10 +224,10 @@ function _renderSetup(e) {
  */
 function _renderAdmin(e) {
   return HtmlService.createTemplateFromFile('UI_Admin')
-      .evaluate()
-      .setTitle('後台管理 - 伊美：簡報同步互動學習系統')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    .evaluate()
+    .setTitle('後台管理 - 伊美：簡報同步互動學習系統')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 /**
@@ -237,14 +237,14 @@ function _renderPortal(e) {
   // 註：安全性與權限檢查已整合於 Service_Security 與 Service_Engine 中。
   const template = HtmlService.createTemplateFromFile('UI_Portal');
   template.title = '伊美：簡報同步互動學習系統 v10.3.7 (Multi-Activity)';
-  
+
   // 固定顯示正確版號，防止試算表名稱過舊導致誤導
   template.activityName = 'emedu-Slides-Sync-Interactive-System - v10.3.7';
-  
+
   return template.evaluate()
-      .setTitle('伊美：簡報同步互動學習系統 v10.3.7')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    .setTitle('伊美：簡報同步互動學習系統 v10.3.7')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 
@@ -268,7 +268,7 @@ function apiFinalizeSetup(config) {
 
     // 3. 建立資料庫與主控台
     const url = Service_DB.installControlSheet();
-    
+
     return {
       status: 'success',
       message: '系統安裝成功！',
@@ -288,7 +288,7 @@ function setupSystem_EMERGENCY_FORCE() {
   console.log("🚀 啟動緊急強制初始化...");
   try {
     // 預設密碼：admin123 (請務必在進入後台後修改)
-    Service_Security.setAdminPassword("admin123456"); 
+    Service_Security.setAdminPassword("admin123456");
     console.log("1. 密碼已強制重置為: admin123456");
 
     const url = Service_DB.installControlSheet();
@@ -326,8 +326,8 @@ function getSystemUrls() {
   console.log("══════════════════════════════════════\n");
 
   var webAppUrl = "";
-  var adminUrl  = "";
-  var masterId  = Service_DB.getMasterId();
+  var adminUrl = "";
+  var masterId = Service_DB.getMasterId();
   var isFromSpreadsheet = false;
 
   // --- 第 1 步：優先讀取試算表 (尊重使用者手動貼上的網址) ---
@@ -341,17 +341,17 @@ function getSystemUrls() {
         if (m2 && String(m2).indexOf("http") > -1) {
           webAppUrl = String(m2).trim();
           if (webAppUrl.indexOf('/dev') > -1) {
-             console.log("ℹ️ 偵測到 /dev 開發者網址，系統將自動修復為 /exec 正式網址");
-             webAppUrl = webAppUrl.replace('/dev', '/exec');
+            console.log("ℹ️ 偵測到 /dev 開發者網址，系統將自動修復為 /exec 正式網址");
+            webAppUrl = webAppUrl.replace('/dev', '/exec');
           }
-          adminUrl  = m3 ? String(m3).trim() : (webAppUrl + "?page=admin");
+          adminUrl = m3 ? String(m3).trim() : (webAppUrl + "?page=admin");
           if (adminUrl.indexOf('/dev') > -1) adminUrl = adminUrl.replace('/dev', '/exec');
-          
+
           isFromSpreadsheet = true;
           console.log("ℹ️ 已讀取試算表內設定的自訂網址");
         }
       }
-    } catch(e) { }
+    } catch (e) { }
   }
 
   // --- 第 2 步：如果試算表是空的，才自動抓取 ---
@@ -360,10 +360,10 @@ function getSystemUrls() {
       var serviceUrl = ScriptApp.getService().getUrl();
       if (serviceUrl && serviceUrl.indexOf("http") > -1) {
         webAppUrl = serviceUrl.replace('/dev', '/exec');
-        adminUrl  = webAppUrl + "?page=admin";
+        adminUrl = webAppUrl + "?page=admin";
         console.log("ℹ️ 已從系統部署自動偵測網址，並已轉換為正式版");
       }
-    } catch(e) { }
+    } catch (e) { }
   }
 
   // --- 第 3 步：印出結果 ---
@@ -398,10 +398,10 @@ function getSystemUrls() {
         cfg2.getRange("M2").setValue(webAppUrl);
         cfg2.getRange("M3").setValue(adminUrl);
         if (!isFromSpreadsheet) {
-           console.log("\n📝 已將偵測到的正式網址自動填入試算表 M2/M3 儲存格！");
+          console.log("\n📝 已將偵測到的正式網址自動填入試算表 M2/M3 儲存格！");
         }
       }
-    } catch(e) {
+    } catch (e) {
       console.log("\n⚠️ 自動填入試算表失敗: " + e.message);
     }
   }
@@ -428,9 +428,9 @@ function fixMasterId() {
       return;
     }
 
-    const correctId  = ss.getId();
+    const correctId = ss.getId();
     const correctUrl = ss.getUrl();
-    const oldId      = PropertiesService.getScriptProperties().getProperty('MASTER_ID') || "(空)";
+    const oldId = PropertiesService.getScriptProperties().getProperty('MASTER_ID') || "(空)";
 
     console.log("📋 舊 MASTER_ID: " + oldId);
     console.log("✅ 新 MASTER_ID: " + correctId);
@@ -441,10 +441,10 @@ function fixMasterId() {
     // 同步清除快取，確保後續 API 讀到最新設定
     try {
       Service_DB.clearActivityConfigCache(correctId);
-    } catch(e) { /* 忽略 */ }
+    } catch (e) { /* 忽略 */ }
 
     console.log("✅ MASTER_ID 已成功修正！請重新整理後台頁面，「開啟主控台」連結即可正常。");
-  } catch(e) {
+  } catch (e) {
     console.error("❌ fixMasterId 失敗: " + e.toString());
   }
 }
@@ -459,25 +459,25 @@ function apiLogin(studentId) {
   if (!studentId || studentId.trim() === "") {
     return { status: 'error', message: '請輸入學號才能開始學習唷！' };
   }
-  
+
   try {
     // v10.4.0: 使用當前活動的試算表 ID，而非固定主控台
     const ssid = Service_DB.getActiveSSId() || Service_DB.getMasterId();
     console.log(`[API] Active SS ID: ${ssid}`);
     if (!ssid) throw new Error("系統主控台尚未安裝，請聯絡系統管理員。");
-    
+
     // 直接呼叫引擎取得下一題
     const nextTaskResult = Service_Engine.getStudentNextTask(ssid, studentId);
     console.log(`[API] 下一步任務結果: ${JSON.stringify(nextTaskResult)}`);
-    
+
     if (nextTaskResult.status === 'completed') {
-       return {
-         status: 'success',
-         completed: true,
-         message: "恭喜！您已完成所有課程任務。"
-       };
+      return {
+        status: 'success',
+        completed: true,
+        message: "恭喜！您已完成所有課程任務。"
+      };
     }
-    
+
     // 獲取所有題目以計算進度 (stats)
     const allQs = Service_DB.getActivityConfig(ssid);
     const q = nextTaskResult.question;
@@ -485,7 +485,7 @@ function apiLogin(studentId) {
     if (!q) {
       throw new Error("尚未設定題目");
     }
-    
+
     const result = {
       status: 'success',
       datestamp: new Date().toISOString(),
@@ -500,12 +500,12 @@ function apiLogin(studentId) {
         currentOrder: allQs.findIndex(item => item.question === q.question) + 1
       }
     };
-    
+
     console.log(`[API] 登入結果回傳成功: ${studentId}`);
     return result;
   } catch (e) {
     console.error(`[API] 登入失敗意外錯誤: ${e.toString()}`);
-    return { status: 'error', message: "系統發生錯誤: " + e.toString() }; 
+    return { status: 'error', message: "系統發生錯誤: " + e.toString() };
   }
 }
 
@@ -518,7 +518,7 @@ function apiAdminLogin(password) {
     if (!Service_Security.verifyAdmin(password)) {
       return { status: 'error', message: '密碼錯誤' };
     }
-    
+
     // 登入成功，獲取儀表板數據
     const masterId = Service_DB.getMasterId();
     // v10.4.0: 統計資料從當前活動試算表讀取
@@ -528,24 +528,24 @@ function apiAdminLogin(password) {
       totalSubmissions: 0,
       masterUrl: masterId ? `https://docs.google.com/spreadsheets/d/${masterId}` : "#"
     };
-    
+
     // 如果有試算表，嘗試取得真實數據（從當前活動 SS）
     if (activeSSId) {
       try {
         const ss = SpreadsheetApp.openById(activeSSId);
         const dataSheet = ss.getSheetByName(Service_DB.getActiveDataSheetName());
         if (dataSheet) {
-           mockStat.totalStudents = Math.max(0, dataSheet.getLastRow() - 1);
-           mockStat.dataSheetId = dataSheet.getSheetId();
+          mockStat.totalStudents = Math.max(0, dataSheet.getLastRow() - 1);
+          mockStat.dataSheetId = dataSheet.getSheetId();
         }
-      } catch(ignore) {}
+      } catch (ignore) { }
     }
 
-    return { 
-      status: 'success', 
-      data: mockStat 
+    return {
+      status: 'success',
+      data: mockStat
     };
-    
+
   } catch (e) {
     return { status: 'error', message: e.toString() };
   }
@@ -557,12 +557,12 @@ function apiAdminLogin(password) {
 function apiAddQuestion(password, questionData) {
   try {
     if (!Service_Security.verifyAdmin(password)) return { status: 'error', message: '權限不足' };
-    
+
     const ssid = Service_DB.getMasterId();
     if (!ssid) return { status: 'error', message: '找不到主控台 ID' };
-    
+
     return Service_DB.addQuestionConfig(ssid, questionData);
-  } catch(e) {
+  } catch (e) {
     return { status: 'error', message: e.toString() };
   }
 }
@@ -574,15 +574,15 @@ function apiSubmit(studentId, stage, question, answer) {
   try {
     // v10.4.0: 答案寫入當前活動的試算表
     const ssid = Service_DB.getActiveSSId() || Service_DB.getMasterId();
-    
+
     // 建構 answers 物件
     const ansObj = {};
     ansObj[question] = answer;
-    
+
     // 呼叫引擎
     const result = Service_Engine.processSubmission(ssid, studentId, stage, ansObj);
     return result;
-    
+
   } catch (e) {
     return { status: 'error', message: e.toString() };
   }
@@ -614,7 +614,7 @@ function apiGetStages(password) {
     });
 
     return { status: 'success', stages };
-  } catch(e) {
+  } catch (e) {
     return { status: 'error', message: e.toString() };
   }
 }
@@ -635,13 +635,13 @@ function apiGetActivityList(password) {
     if (!ssid) return { status: 'error', message: '系統尚未初始化' };
 
     const activities = Service_DB.getActivityList(ssid);
-    const activeId   = Service_DB.getActiveActivityId();
+    const activeId = Service_DB.getActiveActivityId();
     return {
       status: 'success',
       activities,
       activeId: activeId || 'default'
     };
-  } catch(e) {
+  } catch (e) {
     return { status: 'error', message: e.toString() };
   }
 }
@@ -660,7 +660,7 @@ function apiCreateActivity(password, activityName) {
     if (!ssid) return { status: 'error', message: '系統尚未初始化' };
 
     return Service_DB.createActivity(ssid, activityName);
-  } catch(e) {
+  } catch (e) {
     return { status: 'error', message: e.toString() };
   }
 }
@@ -681,7 +681,7 @@ function apiSwitchActivity(password, activityId) {
       status: 'success',
       message: target ? '已切換至活動「' + activityId + '」' : '已切換回預設活動'
     };
-  } catch(e) {
+  } catch (e) {
     return { status: 'error', message: e.toString() };
   }
 }
@@ -700,10 +700,10 @@ function doPost(e) {
  */
 function apiGetSystemStatus(password) {
   if (!Service_Security.verifyAdmin(password)) return { status: 'error', message: '權限不足' };
-  
+
   const masterId = Service_DB.getMasterId();
   const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
-  
+
   return {
     status: 'success',
     data: {
@@ -796,11 +796,11 @@ function apiGetAppUrls() {
     if (sheet) {
       const m2 = sheet.getRange("M2").getValue() || "";
       if (m2) {
-         result.portal = String(m2).replace('/dev', '/exec');
-         result.admin = sheet.getRange("M3").getValue() ? String(sheet.getRange("M3").getValue()).replace('/dev', '/exec') : (result.portal + "?page=admin");
+        result.portal = String(m2).replace('/dev', '/exec');
+        result.admin = sheet.getRange("M3").getValue() ? String(sheet.getRange("M3").getValue()).replace('/dev', '/exec') : (result.portal + "?page=admin");
       }
     }
-  } catch(e) {
+  } catch (e) {
     result.error = "ReadSheetError: " + e.toString();
   }
 
@@ -808,12 +808,12 @@ function apiGetAppUrls() {
   if (!result.portal || String(result.portal).indexOf('http') === -1) {
     try {
       var serviceUrl = ScriptApp.getService().getUrl();
-      if (serviceUrl) { 
+      if (serviceUrl) {
         result.portal = serviceUrl.replace('/dev', '/exec'); // 自動修復
         result.admin = result.portal + (result.portal.indexOf('?') > -1 ? '&page=admin' : '?page=admin');
       }
-    } catch(e) {
-       result.apiError = e.toString();
+    } catch (e) {
+      result.apiError = e.toString();
     }
   }
 
